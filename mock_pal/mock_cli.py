@@ -26,7 +26,9 @@ Usage:
 """
 import logging
 import argparse
-from mock_pal import MockDev, VirtualPortRunner, MockIf
+from mock_pal.mock_dev import MockDev, VirtualPortRunner
+from mock_pal.mock_dev import log_level_module_control
+from mock_pal.mock_if import MockIf
 from mm_pal import MmCmd, serial_connect_wizard, write_history_file
 
 
@@ -57,6 +59,7 @@ def main():
     """Run MockCli command loop."""
     parser = argparse.ArgumentParser()
 
+    # pylint: disable=duplicate-code
     parser.add_argument('--loglevel', default='INFO',
                         help='Python logger log level, defaults to INFO.')
     parser.add_argument('--logmodules', nargs='+', default=None,
@@ -68,15 +71,7 @@ def main():
     parser.add_argument('--sim', default=False, action='store_true',
                         help='Simulate device, defaults to False.')
     pargs = parser.parse_args()
-    if pargs.loglevel:
-        loglevel = logging.getLevelName(pargs.loglevel.upper())
-        if pargs.logmodules is not None:
-            logging.basicConfig()
-            for logname in pargs.logmodules:
-                logger = logging.getLogger(logname)
-                logger.setLevel(loglevel)
-        else:
-            logging.basicConfig(level=loglevel)
+    log_level_module_control(pargs)
 
     vpr = None
     mdev = None

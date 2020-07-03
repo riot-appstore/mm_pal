@@ -423,6 +423,7 @@ class MmIf:
             cmd_info['data'] = cmd_info['data'] & bit_mask
         return cmd_info
 
+    # pylint: disable=R0913
     def _write_bits(self, index, offset, bit_amount, data, timeout=None):
         """Modify specific bits in the register map.
 

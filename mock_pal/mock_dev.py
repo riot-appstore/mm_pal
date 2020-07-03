@@ -166,6 +166,54 @@ class MockDev:
                 break
         self.logger.debug("run_loopback_bytes exited")
 
+    def _parse_wr_cmd(self, args):
+        if len(args) < 3:
+            response = {"result": errno.EINVAL}
+            self.logger.debug("Invalid args")
+        else:
+            response = {"result": 0}
+            index = int(args[1])
+            for arg in args[2:]:
+                num = int(arg)
+                if num > 255:
+                    response = {"result": errno.EOVERFLOW}
+                    break
+                self.logger.debug("data[%r]=%r", index, num)
+                index += 1
+        return response
+
+    def _parse_json_cmd(self, args):
+        try:
+            if args[0] == b'rr':
+                index = int(args[1])
+                size = int(args[2])
+                if size == 0:
+                    response = {"result": errno.EINVAL}
+                    self.logger.debug("Invalid size")
+                else:
+                    data = list(range(index, index + size))
+                    data = [i & 0xFF for i in data]
+                    response = {"data": data, "result": 0}
+                    self.logger.debug("response=%r", response)
+            elif args[0] == b'version':
+                response = {"version": "0.0.0", "result": 0}
+            elif (args[0] == b'ex' or
+                  args[0] == b'mcu_rst' or
+                  args[0] == b'special_cmd'):
+                response = {"result": 0}
+            elif args[0] == b'wr':
+                response = self._parse_wr_cmd(args)
+            else:
+                response = {"result": errno.EPROTONOSUPPORT}
+
+        except (IndexError) as exc:
+            response = {"result": errno.EPROTONOSUPPORT}
+            self.logger.debug("error=%r", exc)
+        except (ValueError, TypeError) as exc:
+            response = {"result": errno.EBADMSG}
+            self.logger.debug("error=%r", exc)
+        return response
+
     def run_app_json(self):
         """Run a basic json parsing app.
 
@@ -189,47 +237,7 @@ class MockDev:
             read = self.dev.readline()
             args = read.split()
             self.logger.debug("cmd=%r", args)
-            try:
-                if args[0] == b'rr':
-                    index = int(args[1])
-                    size = int(args[2])
-                    if size == 0:
-                        response = {"result": errno.EINVAL}
-                        self.logger.debug("Invalid size")
-                    else:
-                        data = list(range(index, index + size))
-                        data = [i & 0xFF for i in data]
-                        response = {"data": data, "result": 0}
-                        self.logger.debug("response=%r", response)
-                elif args[0] == b'version':
-                    response = {"version": "0.0.0", "result": 0}
-                elif (args[0] == b'ex' or
-                      args[0] == b'mcu_rst' or
-                      args[0] == b'special_cmd'):
-                    response = {"result": 0}
-                elif args[0] == b'wr':
-                    if len(args) < 3:
-                        response = {"result": errno.EINVAL}
-                        self.logger.debug("Invalid args")
-                    else:
-                        response = {"result": 0}
-                        index = int(args[1])
-                        for arg in args[2:]:
-                            num = int(arg)
-                            if num > 255:
-                                response = {"result": errno.EOVERFLOW}
-                                break
-                            self.logger.debug("data[%r]=%r", index, num)
-                            index += 1
-                else:
-                    response = {"result": errno.EPROTONOSUPPORT}
-
-            except (IndexError) as exc:
-                response = {"result": errno.EPROTONOSUPPORT}
-                self.logger.debug("error=%r", exc)
-            except (ValueError, TypeError) as exc:
-                response = {"result": errno.EBADMSG}
-                self.logger.debug("error=%r", exc)
+            response = self._parse_json_cmd(args)
             response = json.dumps(response)
             response = f"{response}\n"
             self.dev.write(response.encode())
@@ -278,6 +286,23 @@ class MockDev:
         self._exit_thread = False
 
 
+def log_level_module_control(pargs):
+    """Enable logs depending on modules.
+
+    Args:
+        pargs: arguments from argparse
+    """
+    if pargs.loglevel:
+        loglevel = logging.getLevelName(pargs.loglevel.upper())
+        if pargs.logmodules is not None:
+            logging.basicConfig()
+            for logname in pargs.logmodules:
+                logger = logging.getLogger(logname)
+                logger.setLevel(loglevel)
+        else:
+            logging.basicConfig(level=loglevel)
+
+
 def main():
     """Run serial loopback example.
 
@@ -293,15 +318,8 @@ def main():
                         help='Function to run, defaults to run_loopback_line.',
                         default="run_loopback_line")
     pargs = parser.parse_args()
-    if pargs.loglevel:
-        loglevel = logging.getLevelName(pargs.loglevel.upper())
-        if pargs.logmodules is not None:
-            logging.basicConfig()
-            for logname in pargs.logmodules:
-                logger = logging.getLogger(logname)
-                logger.setLevel(loglevel)
-        else:
-            logging.basicConfig(level=loglevel)
+
+    log_level_module_control(pargs)
 
     virtual_port_runner = VirtualPortRunner()
     try:

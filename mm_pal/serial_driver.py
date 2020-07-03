@@ -97,7 +97,6 @@ class SerialDriver:
         if len(args) < 2:
             kwargs['baudrate'] = kwargs.pop('baudrate', 115200)
         if len(args) == 0 and 'port' not in kwargs:
-            print(kwargs)
             if search_com:
                 # Gets the port that contains search string if not specified.
                 # eg. If connecting to an nucleo board search for
@@ -122,12 +121,8 @@ class SerialDriver:
                 port = args[0]
                 args[0] = None  # pylint: disable=E1137
 
-            rts = None
-            dtr = None
-            if "rts" in kwargs:
-                rts = kwargs.pop('rts')
-            if "dtr" in kwargs:
-                dtr = kwargs.pop('dtr')
+            rts = kwargs.pop('rts', None)
+            dtr = kwargs.pop('dtr', None)
 
             self.logger.debug("Serial(%r,%r)", args, kwargs)
             self.dev = Serial(*args, **kwargs)
