@@ -1,0 +1,14 @@
+name,offset,total_size,type_size,type,description,access,array_size,bit_offset,bits
+arr_8,0,512,1,uint8_t,example description,0,512,,
+arr_16,512,32,2,uint16_t,example description,0,16,,
+arr_32,544,32,4,uint32_t,example description,0,256,,
+num_8,545,,1,uint8_t,example description,0,,,
+num_16,547,,2,uint16_t,example description,0,,,
+num_32,551,,4,uint32_t,example description,0,,,
+snum_8,552,,1,int8_t,example description,0,,,
+snum_16,554,,2,int16_t,example description,0,,,
+snum_32,558,,4,int32_t,example description,0,,,
+bf_8.bf_1,559,,1,,example description,0,,0,1
+bf_8.bf_3,559,,1,,example description,0,,1,3
+bf_32.bf_17,560,,1,,example description,0,,0,17
+bf_32.bf_1,560,,1,,example description,0,,0,1
