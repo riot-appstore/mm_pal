@@ -1,0 +1,27 @@
+{
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.flake8Enabled": true,
+    "cSpell.ignoreWords": [
+        "aafig",
+        "begidx",
+        "cmdloop",
+        "delim",
+        "endidx",
+        "map",
+        "map structs",
+        "mline",
+        "mmif",
+        "mockdev",
+        "mockif",
+        "noqa",
+        "onecmd",
+        "pargs",
+        "popen",
+        "rfind",
+        "structs",
+        "tty",
+        "tty mockdev"
+    ],
+    "restructuredtext.confPath": "${workspaceFolder}/docs/source"
+}
