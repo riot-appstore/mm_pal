@@ -1,0 +1,31 @@
+{
+    "$schema":"http://json-schema.org/draft-07/schema#",
+    "$id":"url_to_schema",
+    "title":"Memory Map Interface Response",
+    "description":"Schema for the response structure for mm_if commands",
+    "type":"object",
+
+    "properties":{
+        "cmd":{
+            "type": ["string", "array"],
+            "description": "Command or commands used"
+        },
+        "msg":{
+            "type":"string",
+            "description":"Additional non-actionable information"
+        },
+        "data":{
+            "type": ["string", "integer", "array", "object"],
+            "description": "Data requested"
+        },
+        "result":{
+            "type": ["string"],
+            "enum": ["Success", "Error", "Timeout"],
+            "description": "Data requested"
+        }
+    },
+    "required":[
+        "cmd",
+        "result"
+    ]
+}
