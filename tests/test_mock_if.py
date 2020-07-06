@@ -6,11 +6,13 @@ import pytest
 from conftest import MM_PATH
 from mm_pal import RESULT_SUCCESS
 from mock_pal import MockIf
+from conftest import sleep_before_serial_action
 
 
 def test_loopback_line(mock_app_json, vpr_inst):
     """Tests the serial driver using the mock device in loopback mode."""
     mockif = MockIf(port=vpr_inst.ext_port)
+    sleep_before_serial_action()
     assert mockif.get_version()['result'] == RESULT_SUCCESS
     assert mockif.execute_changes()['result'] == RESULT_SUCCESS
     assert mockif.soft_reset()['result'] == RESULT_SUCCESS

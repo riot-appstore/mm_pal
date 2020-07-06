@@ -6,6 +6,8 @@ from time import sleep
 import pytest
 from mock_pal import MockDev
 from mm_pal.serial_driver import SerialDriver
+from conftest import sleep_before_serial_action
+
 
 @pytest.mark.parametrize("test_string", ['test', 'another_test'])
 @pytest.mark.parametrize("preamble", ['', 'pre:', 0])
