@@ -12,7 +12,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../mock_pal/'))
+sys.path.insert(0, os.path.abspath('../../mm_pal/'))
 
 
 # -- Project information -----------------------------------------------------
@@ -24,6 +25,7 @@ author = 'Kevin Weiss'
 # The full version, including alpha/beta/rc tags
 release = '0.0.0'
 
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
@@ -59,7 +61,7 @@ html_theme = 'sphinxdoc'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Napoleon settings
 napoleon_google_docstring = True
