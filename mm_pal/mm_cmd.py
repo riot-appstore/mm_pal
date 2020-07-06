@@ -37,7 +37,7 @@ except ImportError:
     logging.warning("readline package could not be found!")
     logging.warning("History will not be available.")
 import serial.tools.list_ports
-from mm_pal import RESULT_SUCCESS
+from mm_pal.mm_if import RESULT_SUCCESS
 
 
 _HISTFILE = os.path.join(os.path.expanduser("~"), ".mm_history")
@@ -78,24 +78,24 @@ def serial_connect_wizard(if_obj, **kwargs):
     serial_devices = sorted(serial.tools.list_ports.comports())
     if len(serial_devices) == 0:
         raise ConnectionError("Could not find any available devices")
-    elif len(serial_devices) == 1:
+    if len(serial_devices) == 1:
         print('Connected to {}'.format(serial_devices[0][0]))
         kwargs['port'] = serial_devices[0][0]
         return if_obj(**kwargs)
-    else:
-        print('Select a serial port:')
-        max_num = 0
-        for i, s_dev in enumerate(serial_devices):
-            print("{}: {}".format(i, s_dev))
-            max_num = i
-        s_num = -1
-        while s_num < 0 or max_num < s_num:
-            try:
-                s_num = int(input("Selection(number): "))
-            except ValueError:
-                print("Invalid selection!")
-        kwargs['port'] = serial_devices[int(s_num)][0]
-        return if_obj(**kwargs)
+
+    print('Select a serial port:')
+    max_num = 0
+    for i, s_dev in enumerate(serial_devices):
+        print("{}: {}".format(i, s_dev))
+        max_num = i
+    s_num = -1
+    while s_num < 0 or max_num < s_num:
+        try:
+            s_num = int(input("Selection(number): "))
+        except ValueError:
+            print("Invalid selection!")
+    kwargs['port'] = serial_devices[int(s_num)][0]
+    return if_obj(**kwargs)
 
 
 class MmCmd(cmd.Cmd):
@@ -383,7 +383,7 @@ class MmCmd(cmd.Cmd):
         # pylint: disable=unused-argument
         before_arg = line.rfind(" ", 0, start_idx)
         if before_arg == -1:
-            return
+            return []
 
         fixed = line[before_arg+1:start_idx]
         arg = line[before_arg+1:end_idx]
