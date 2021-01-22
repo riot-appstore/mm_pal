@@ -1,3 +1,5 @@
+[![ci Actions Status](https://github.com/riot-appstore/mm_pal/workflows/ci/badge.svg)](https://github.com/riot-appstore/mm_pal/actions)
+
 # mm_pal (Memory Map Protocol Abstraction Layer)
 
 Python package for providing an runtime access to embedded devices based
