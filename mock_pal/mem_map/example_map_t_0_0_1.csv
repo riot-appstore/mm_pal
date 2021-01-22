@@ -1,0 +1,27 @@
+name,offset,total_size,type_size,type,description,access,array_size,bit_offset,bits
+arru8,0,512,1,uint8_t,,1,512,,
+arru16,512,32,2,uint16_t,,1,16,,
+arru32,544,1024,4,uint32_t,,1,256,,
+ui8,1568,,1,uint8_t,,1,,,
+ui16,1569,,2,uint16_t,,1,,,
+ui32,1571,,4,uint32_t,,1,,,
+i8,1575,,1,int8_t,,1,,,
+i16,1576,,2,int16_t,,1,,,
+i32,1578,,4,int32_t,,1,,,
+bf8.b1,1582,,1,,,1,,0,1
+bf8.b2,1582,,1,,,1,,1,2
+bf8.res,1582,,1,,Reserved bits,1,,3,5
+bf16.b9,1583,,2,,,1,,0,9
+bf16.b1,1583,,2,,,1,,9,1
+bf16.b6,1583,,2,,,1,,10,6
+bf32.b1,1585,,4,,,1,,0,1
+bf32.res,1585,,4,,Reserved bits,1,,1,31
+stt.ui8,1589,,1,uint8_t,,1,,,
+stt.arr16,1590,4,2,int16_t,,1,2,,
+stt.bf16.b9,1594,,2,,,1,,0,9
+stt.bf16.b1,1594,,2,,,1,,9,1
+stt.bf16.b6,1594,,2,,,1,,10,6
+ui8_extra,1596,,1,uint8_t,,1,,,
+bf8_extra.b1,1597,,1,,,1,,0,1
+bf8_extra.b2,1597,,1,,,1,,1,2
+bf8_extra.res,1597,,1,,Reserved bits,1,,3,5

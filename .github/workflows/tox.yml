@@ -14,9 +14,9 @@ jobs:
 
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 3
+      max-parallel: 4
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -28,6 +28,24 @@ jobs:
       run: |
         sudo apt-get install socat
         python -m pip install --upgrade pip
-        pip install tox tox-gh-actions
+        pip install tox
     - name: Test with tox
-      run: tox
+      run: |
+        pyenv="py$(echo "${{ matrix.python-version }}" | tr -d '.')"
+        tox -e ${pyenv},test,flake8,lint,doctest
+    - name: Upload to coverage
+      uses: codecov/codecov-action@v1.2.1
+      with:
+        files: coverage.xml
+        flags: ${{ matrix.python-version }},${{ matrix.tox-testenv }}
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      if: >-
+        matrix.python-version == 3.9 &&
+        github.event_name == 'push' &&
+        startsWith(github.event.ref, 'refs/tags')
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_TOKEN }}
+        packages_dir: .tox/dist/
+

@@ -87,3 +87,5 @@ To test the package with `pytest` must be installed installed and updated.
 
 Using `./setup.py test` or `tox` will perform tests on the
 source package.
+
+Special thanks to [riotctrl](https://github.com/RIOT-OS/riotctrl) as it served as a great example.

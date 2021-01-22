@@ -13,7 +13,7 @@ from .mm_cmd import MmCmd, serial_connect_wizard, write_history_file
 
 __author__ = "Kevin Weiss"
 __email__ = "kevin.weiss@gmail.com"
-__version__ = "0.0.0"
+__version__ = "0.1.0"
 
 __all__ = ['MmIf',
            'MmCmd',

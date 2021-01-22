@@ -1,0 +1,12 @@
+{
+    "access": 1,
+    "array_size": "",
+    "bit_offset": "",
+    "bits": "",
+    "description": "",
+    "name": "i8",
+    "offset": 1575,
+    "total_size": "",
+    "type": "int8_t",
+    "type_size": 1
+}

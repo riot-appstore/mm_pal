@@ -1,0 +1,140 @@
+{
+    "bitfields": [
+        {
+            "elements": [
+                {
+                    "bits": 1,
+                    "name": "b1"
+                },
+                {
+                    "bits": 2,
+                    "name": "b2"
+                }
+            ],
+            "type": "uint8_t",
+            "type_name": "bf_8_t"
+        },
+        {
+            "elements": [
+                {
+                    "bits": 9,
+                    "name": "b9"
+                },
+                {
+                    "bits": 1,
+                    "name": "b1"
+                },
+                {
+                    "bits": 6,
+                    "name": "b6"
+                }
+            ],
+            "type": "uint16_t",
+            "type_name": "bf_16_t"
+        },
+        {
+            "elements": [
+                {
+                    "bits": 1,
+                    "name": "b1"
+                }
+            ],
+            "type": "uint32_t",
+            "type_name": "bf_32_t"
+        }
+    ],
+    "metadata": {
+        "app_name": "example",
+        "author": "Kevin Weiss",
+        "version": "0.0.1"
+    },
+    "typedefs": [
+        {
+            "elements": [
+                {
+                    "name": "ui8",
+                    "type": "uint8_t"
+                },
+                {
+                    "array_size": 2,
+                    "name": "arr16",
+                    "type": "int16_t"
+                },
+                {
+                    "name": "bf16",
+                    "type": "bf_16_t"
+                }
+            ],
+            "type_name": "struct_t"
+        },
+        {
+            "elements": [
+                {
+                    "array_size": 512,
+                    "name": "arru8",
+                    "type": "uint8_t"
+                },
+                {
+                    "array_size": 16,
+                    "name": "arru16",
+                    "type": "uint16_t"
+                },
+                {
+                    "array_size": 256,
+                    "name": "arru32",
+                    "type": "uint32_t"
+                },
+                {
+                    "name": "ui8",
+                    "type": "uint8_t"
+                },
+                {
+                    "name": "ui16",
+                    "type": "uint16_t"
+                },
+                {
+                    "name": "ui32",
+                    "type": "uint32_t"
+                },
+                {
+                    "name": "i8",
+                    "type": "int8_t"
+                },
+                {
+                    "name": "i16",
+                    "type": "int16_t"
+                },
+                {
+                    "name": "i32",
+                    "type": "int32_t"
+                },
+                {
+                    "name": "bf8",
+                    "type": "bf_8_t"
+                },
+                {
+                    "name": "bf16",
+                    "type": "bf_16_t"
+                },
+                {
+                    "name": "bf32",
+                    "type": "bf_32_t"
+                },
+                {
+                    "name": "stt",
+                    "type": "struct_t"
+                },
+                {
+                    "name": "ui8_extra",
+                    "type": "uint8_t"
+                },
+                {
+                    "name": "bf8_extra",
+                    "type": "bf_8_t"
+                }
+            ],
+            "generate_mem_map": true,
+            "type_name": "map_t"
+        }
+    ]
+}

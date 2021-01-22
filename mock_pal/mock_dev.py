@@ -44,7 +44,8 @@ class VirtualPortRunner:
             connects to.
     """
 
-    def __init__(self, ext_port='ttyDEV0', mock_port='ttyMOCKDEV0'):
+    def __init__(self, ext_port='/tmp/mm_pal_dev0',
+                 mock_port='/tmp/mm_pal_mock_dev0'):
         """Start the virtual com ports with `socat`.
 
         Args:
@@ -93,7 +94,7 @@ class MockDev:
         Keyword Args:
             **dev_driver (obj, optional): Already instantiated serial driver,
                 if not present serial port will be created.
-            **port (string): Serial port of mock dev, defaults to "ttyMOCKDEV0"
+            **port (string): Serial port of mock dev, defaults to "/tmp/mm_pal_mock_dev0"
             **baudrate (int): Baudrate for mock dev, defaults to 115200
 
         Note:
@@ -102,12 +103,24 @@ class MockDev:
             class for additional ``**kwargs`` functionality.
         """  # noqa: E501
         self.logger = logging.getLogger(self.__class__.__name__)
-        kwargs['port'] = kwargs.pop('port', "ttyMOCKDEV0")
+        kwargs['port'] = kwargs.pop('port', "/tmp/mm_pal_mock_dev0")
         kwargs['baudrate'] = kwargs.pop('baudrate', 115200)
         self.mock_port = kwargs['port']
         self.logger.debug("Mock device = Serial(%r)", kwargs)
+
         self.bytes_read = 0
         self.bytes_written = 0
+        self.wr_bytes = None
+        self.wr_index = None
+        self.rr_data = None
+
+        self.force_fails = 0
+        self.force_error_code = errno.EADDRNOTAVAIL
+        self.force_timeout = 0
+        self.force_parse_error = 0
+        self.force_data_fail = 0
+        self.force_write_fail = 0
+
         self._exit_thread = False
         self._run_thread = None
         if 'dev_driver' in kwargs:
@@ -134,6 +147,10 @@ class MockDev:
         while True:
             self.logger.debug("run_loopback_line: readline()")
             read = self.dev.readline()
+            if self.force_timeout > 0:
+                self.force_timeout -= 1
+                continue
+
             self.bytes_read += len(read)
             self.logger.debug("run_loopback_line: readline=%r", read)
             self.dev.write(read)
@@ -167,36 +184,68 @@ class MockDev:
         self.logger.debug("run_loopback_bytes exited")
 
     def _parse_wr_cmd(self, args):
+        if self.force_write_fail > 0:
+            self.force_write_fail -= 1
+            return {"result": errno.EINVAL}
         if len(args) < 3:
             response = {"result": errno.EINVAL}
             self.logger.debug("Invalid args")
         else:
             response = {"result": 0}
             index = int(args[1])
+            self.wr_index = index
+            self.wr_bytes = []
             for arg in args[2:]:
                 num = int(arg)
+                self.wr_bytes.append(num)
                 if num > 255:
                     response = {"result": errno.EOVERFLOW}
                     break
                 self.logger.debug("data[%r]=%r", index, num)
                 index += 1
+
+        return response
+
+    def _parse_rr_cmd(self, args):
+        if self.force_data_fail > 0:
+            self.force_data_fail -= 1
+            return {"result": 0, "data": "foo"}
+        index = int(args[1])
+        size = int(args[2])
+        if size == 0:
+            response = {"result": errno.EINVAL}
+            self.logger.debug("Invalid size")
+        else:
+            if self.rr_data is None:
+                data = list(range(index, index + size))
+                data = [i & 0xFF for i in data]
+            else:
+                try:
+                    data = list(self.rr_data.to_bytes(size,
+                                                      byteorder='little',
+                                                      signed=True))
+                except OverflowError:
+                    data = list(self.rr_data.to_bytes(size,
+                                                      byteorder='little',
+                                                      signed=False))
+                self.rr_data = None
+            response = {"data": data, "result": 0}
+            self.logger.debug("response=%r", response)
         return response
 
     def _parse_json_cmd(self, args):
+        if self.force_fails > 0:
+            self.force_fails -= 1
+            return {"result": self.force_error_code}
+        if self.force_timeout > 0:
+            self.force_timeout -= 1
+            return {}
+
         try:
             if args[0] == b'rr':
-                index = int(args[1])
-                size = int(args[2])
-                if size == 0:
-                    response = {"result": errno.EINVAL}
-                    self.logger.debug("Invalid size")
-                else:
-                    data = list(range(index, index + size))
-                    data = [i & 0xFF for i in data]
-                    response = {"data": data, "result": 0}
-                    self.logger.debug("response=%r", response)
+                response = self._parse_rr_cmd(args)
             elif args[0] == b'version':
-                response = {"version": "0.0.0", "result": 0}
+                response = {"version": "0.0.1", "result": 0}
             elif (args[0] == b'ex' or
                   args[0] == b'mcu_rst' or
                   args[0] == b'special_cmd'):
@@ -238,8 +287,12 @@ class MockDev:
             args = read.split()
             self.logger.debug("cmd=%r", args)
             response = self._parse_json_cmd(args)
-            response = json.dumps(response)
-            response = f"{response}\n"
+            if self.force_parse_error > 0:
+                self.force_parse_error -= 1
+                response = f"foobar\n{{\"response\": {-999}}}\n"
+            else:
+                response = json.dumps(response)
+                response = f"{response}\n"
             self.dev.write(response.encode())
             self.bytes_read += len(read)
             self.bytes_written += len(response)
@@ -315,7 +368,10 @@ def main():
     parser.add_argument('--logmodules', nargs='+', default=None,
                         help='Modules to enable logging.')
     parser.add_argument('--func', '-f',
-                        help='Function to run, defaults to run_loopback_line.',
+                        help='Function to run, defaults to run_loopback_line. '
+                        '{run_loopback_line, '
+                        'run_loopback_bytes, '
+                        'run_app_json}',
                         default="run_loopback_line")
     pargs = parser.parse_args()
 
