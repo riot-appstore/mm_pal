@@ -16,7 +16,8 @@ from mm_pal import MmIf
 
 
 MM_PATH = str(Path(__file__).parents[0]) + \
-          "/../mock_pal/mem_map/example_map_t_0_0_0.csv"
+          "/../mock_pal/mem_map/example_map_t_0_0_1.csv"
+
 
 def sleep_before_serial_action():
     """Needed since some slower computers error."""
@@ -70,3 +71,4 @@ def mm_if_inst(vpr_inst):
     sleep_before_serial_action()
     yield mmif
     mmif.driver.close()
+

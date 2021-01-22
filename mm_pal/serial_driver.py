@@ -114,6 +114,7 @@ class SerialDriver:
         try:
             # In order to set rts and dtr before opening port
             # port must == None
+            args = list(args)
             if len(args) == 0:
                 port = kwargs.pop('port')
                 kwargs['port'] = None
@@ -231,9 +232,11 @@ class SerialDriver:
             TimeoutError: If a line cannot be read a timeout is raised.
         """
         response = ""
-        while delim not in response:
-            response = response.join(self.readline(timeout=timeout,
-                                                   clean_noise=clean_noise))
+        rline = ""
+        while delim not in rline:
+            response += rline
+            rline = self.readline(timeout=timeout,
+                                  clean_noise=clean_noise)
         return response
 
     def read(self, size=1, timeout=None):

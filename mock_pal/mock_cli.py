@@ -54,6 +54,19 @@ class MockCli(MmCmd):
             super().__init__(MockIf(**kwargs))
         self.logger.debug("__init__(%r)", kwargs)
 
+    def do_special_cmd(self, arg):
+        """Do nothing but show how to use special commands.
+
+        Usage:
+            special_cmd
+        """
+        try:
+            resp = self.dev_driver.special_cmd()
+            print(resp)
+        except (TypeError, ValueError, SyntaxError) as exc:
+            print(exc)
+            print("args", arg)
+
 
 def main():
     """Run MockCli command loop."""

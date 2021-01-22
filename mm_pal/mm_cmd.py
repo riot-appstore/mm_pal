@@ -32,7 +32,7 @@ from json import dumps
 import logging
 try:
     import readline
-except ImportError:
+except ImportError:  # pragma: no cover
     readline = None
     logging.warning("readline package could not be found!")
     logging.warning("History will not be available.")
@@ -79,14 +79,14 @@ def serial_connect_wizard(if_obj, **kwargs):
     if len(serial_devices) == 0:
         raise ConnectionError("Could not find any available devices")
     if len(serial_devices) == 1:
-        print('Connected to {}'.format(serial_devices[0][0]))
+        print(f'Connected to {serial_devices[0][0]}')
         kwargs['port'] = serial_devices[0][0]
         return if_obj(**kwargs)
 
     print('Select a serial port:')
     max_num = 0
     for i, s_dev in enumerate(serial_devices):
-        print("{}: {}".format(i, s_dev))
+        print(f"{i}: {s_dev}")
         max_num = i
     s_num = -1
     while s_num < 0 or max_num < s_num:
@@ -309,7 +309,7 @@ class MmCmd(cmd.Cmd):
                 print(dumps(self.dev_driver.mem_map[arg], sort_keys=True,
                             indent=4))
             except KeyError as exc:
-                print("Cannot parse {}".format(exc))
+                print(f"Cannot parse {exc}")
         else:
             print(dumps(self.dev_driver.mem_map, sort_keys=True, indent=4))
 
@@ -342,7 +342,7 @@ class MmCmd(cmd.Cmd):
                         record_types[key] = val[arg]
             print(dumps(record_types, sort_keys=True, indent=4))
         except KeyError as exc:
-            print("Cannot parse {}".format(exc))
+            print(f"Cannot parse {exc}")
 
     def complete_info_param(self, text, line, begidx, endidx):
         """Completes arg with common record types."""
@@ -436,7 +436,7 @@ class MmCmd(cmd.Cmd):
         try:
             results = func(*func_args)
         except KeyError as exc:
-            print('Could not parse argument {}'.format(exc))
+            print(f"Could not parse argument {exc}")
         except (TypeError, ValueError, SyntaxError) as exc:
             print(exc)
         else:

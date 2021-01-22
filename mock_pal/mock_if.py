@@ -50,7 +50,7 @@ class MockIf(MmIf):
 
         if self.mem_map is None:
             version_str = self.if_version.replace('.', '_')
-            rel_path = '/mem_map/example_map_t_{}.csv'.format(version_str)
+            rel_path = f"/mem_map/example_map_t_{version_str}.csv"
             version_path = str(Path(__file__).parents[0]) + rel_path
             self.mem_map = import_mm_from_csv(version_path)
 

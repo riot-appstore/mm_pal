@@ -1,12 +1,120 @@
-"""Tests Serial Driver for philip pal
+"""Tests Serial Driver for mm_pal
 
-    This test should be run with only one PHiLIP device plugged in.
+    This test can be run without any hardware but some tests must have at least
+    one virtual com port plugged in otherwise they be skipped.
 """
 from time import sleep
 import pytest
-from mock_pal import MockDev
+from serial.tools import list_ports
 from mm_pal.serial_driver import SerialDriver
-from conftest import sleep_before_serial_action
+
+
+def _confirm_echo_readline(ser_dri):
+    ser_dri.writeline("foo")
+    assert ser_dri.readline() == "foo\n"
+
+
+@pytest.mark.parametrize("fos", [True, False])
+def test_init_flush_on_startup(mock_lb, vpr_inst, fos):
+    port = vpr_inst.ext_port
+    SerialDriver(port, flush_on_startup=fos)
+    mock_lb.force_timeout = 1
+    if fos:
+        assert mock_lb.bytes_written == 1
+        _confirm_echo_readline(SerialDriver(port, flush_on_startup=fos))
+    else:
+        assert mock_lb.bytes_written == 0
+        with pytest.raises(TimeoutError):
+            _confirm_echo_readline(SerialDriver(port, flush_on_startup=fos))
+
+
+@pytest.mark.skipif(True,
+                    reason="No com port")
+def test_init_usb_only():
+    SerialDriver()
+    SerialDriver(use_port_that_contains="/dev")
+
+
+def test_init_args(mock_lb, vpr_inst):
+    _confirm_echo_readline(SerialDriver(vpr_inst.ext_port))
+    _confirm_echo_readline(SerialDriver(vpr_inst.ext_port, 115200))
+
+
+def test_init_kwargs(mock_lb, vpr_inst):
+    _confirm_echo_readline(SerialDriver(port=vpr_inst.ext_port,
+                                        rts=True,
+                                        dtr=True))
+    with pytest.raises(TypeError):
+        # Since serial exception is caught
+        ser_dri = SerialDriver(port="foo")
+
+    mock_lb.force_timeout = 1
+    ser_dri = SerialDriver(port=vpr_inst.ext_port,
+                           reconnect_on_timeout=False)
+    with pytest.raises(TimeoutError):
+        _confirm_echo_readline(ser_dri)
+    _confirm_echo_readline(ser_dri)
+
+    ser_dri = SerialDriver(port=vpr_inst.ext_port,
+                           reconnect_on_timeout=True)
+    mock_lb.force_timeout = 1
+    with pytest.raises(TimeoutError):
+        _confirm_echo_readline(ser_dri)
+    _confirm_echo_readline(ser_dri)
+
+
+def test_init_close_open(mock_lb, ser_dri):
+    ser_dri.close()
+    ser_dri.open(*ser_dri._args, **ser_dri._kwargs)
+
+def test_readline(mock_lb, ser_dri):
+
+    ser_dri.writeline("\0\0\0foo")
+    assert ser_dri.readline(clean_noise=True) == "foo\n"
+
+    ser_dri.writeline("\0\0\0foo")
+    assert ser_dri.readline(clean_noise=False) == "\0\0\0foo\n"
+
+    with pytest.raises(TimeoutError):
+        ser_dri.readline()
+
+    ser_dri.writeline("foo")
+    assert ser_dri.readline(timeout=1) == "foo\n"
+
+    ser_dri.writeline("foo")
+    with pytest.raises(TimeoutError):
+        ser_dri.readline(timeout=0)
+
+
+def test_readline_to_delim(mock_lb, ser_dri):
+
+    ser_dri.writeline("foo")
+    ser_dri.writeline("bar")
+    ser_dri.writeline(">")
+    lines = ser_dri.readlines_to_delim()
+    sleep(0.1)
+    assert lines == "foo\nbar\n"
+
+    ser_dri.writeline("foo")
+    ser_dri.writeline("bar")
+    ser_dri.writeline("DELIM")
+    sleep(0.1)
+    lines = ser_dri.readlines_to_delim(delim="DELIM")
+    assert lines == "foo\nbar\n"
+
+    ser_dri.writeline("foo")
+    ser_dri.writeline("bar")
+    with pytest.raises(TimeoutError):
+        ser_dri.readlines_to_delim()
+
+
+def test_read(mock_lb, ser_dri):
+    ser_dri.writeline("foo")
+    line = ser_dri.read(size=4, timeout=1)
+    assert line == b"foo\n"
+
+    with pytest.raises(TimeoutError):
+        ser_dri.read()
 
 
 @pytest.mark.parametrize("test_string", ['test', 'another_test'])

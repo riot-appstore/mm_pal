@@ -1,3 +1,5 @@
+[![ci Actions Status](https://github.com/riot-appstore/mm_pal/workflows/ci/badge.svg)](https://github.com/riot-appstore/mm_pal/actions)
+
 # mm_pal (Memory Map Protocol Abstraction Layer)
 
 Python package for providing an runtime access to embedded devices based
@@ -87,3 +89,5 @@ To test the package with `pytest` must be installed installed and updated.
 
 Using `./setup.py test` or `tox` will perform tests on the
 source package.
+
+Special thanks to [riotctrl](https://github.com/RIOT-OS/riotctrl) as it served as a great example.
