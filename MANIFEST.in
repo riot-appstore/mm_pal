@@ -1,2 +1,1 @@
-include mm_pal/schema/*
 include mock_pal/mem_map/*

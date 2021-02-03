@@ -55,8 +55,8 @@ setup(
         "Intended Audience :: Developers"
     ],
     setup_requires=["pytest-runner"],
-    tests_require=["pytest", "pytest-cov", "pytest-regtest", "jsonschema"],
-    install_requires=['pyserial'],
+    tests_require=["pytest", "pytest-cov", "pytest-regtest"],
+    install_requires=['pyserial', 'cmd2'],
     entry_points={
         'console_scripts': ['start_mock_dev=mock_pal.mock_dev:main',
                             'mm_pal_mock_cli=mock_pal.mock_cli:main']

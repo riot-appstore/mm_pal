@@ -8,18 +8,14 @@
 Exposes useful modules.
 """
 from .mm_if import MmIf, import_mm_from_csv
-from .mm_if import RESULT_ERROR, RESULT_SUCCESS, RESULT_TIMEOUT
-from .mm_cmd import MmCmd, serial_connect_wizard, write_history_file
+from .mm_cmd import MmCmd
+from .misc import serial_connect_wizard
 
 __author__ = "Kevin Weiss"
 __email__ = "kevin.weiss@gmail.com"
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 __all__ = ['MmIf',
            'MmCmd',
            'import_mm_from_csv',
-           'RESULT_ERROR',
-           'RESULT_SUCCESS',
-           'RESULT_TIMEOUT',
-           'serial_connect_wizard',
-           'write_history_file']
+           'serial_connect_wizard']

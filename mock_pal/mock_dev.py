@@ -12,6 +12,7 @@ on one side of the com port.
 import argparse
 import errno
 import json
+import os
 import logging
 import subprocess
 from time import sleep
@@ -63,7 +64,10 @@ class VirtualPortRunner:
         self.ext_port = ext_port
         self.mock_port = mock_port
         # It takes some time to setup the ports
-        sleep(1)
+        for _ in range(100):
+            if os.path.exists(ext_port) and os.path.exists(mock_port):
+                break
+            sleep(0.1)
 
     def __del__(self):
         """Destructor that terminates the process."""
@@ -378,16 +382,14 @@ def main():
     log_level_module_control(pargs)
 
     virtual_port_runner = VirtualPortRunner()
-    try:
-        dev = MockDev(port=virtual_port_runner.mock_port)
-        if pargs.func == "run_loopback_line":
-            dev.run_loopback_line()
-        elif pargs.func == "run_loopback_bytes":
-            dev.run_loopback_bytes()
-        elif pargs.func == "run_app_json":
-            dev.run_app_json()
-    except KeyboardInterrupt:
-        pass
+
+    dev = MockDev(port=virtual_port_runner.mock_port)
+    if pargs.func == "run_loopback_line":
+        dev.run_loopback_line()
+    elif pargs.func == "run_loopback_bytes":
+        dev.run_loopback_bytes()
+    elif pargs.func == "run_app_json":
+        dev.run_app_json()
 
 
 if __name__ == '__main__':

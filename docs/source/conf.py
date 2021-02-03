@@ -19,11 +19,26 @@ sys.path.insert(0, os.path.abspath('../../mm_pal/'))
 # -- Project information -----------------------------------------------------
 
 project = 'Memory Map Protocol Abstraction Layer'
-copyright = '2020, Kevin Weiss'
+copyright = '2021, Kevin Weiss'
 author = 'Kevin Weiss'
 
+
+def get_version():
+    """ Extract package version without importing file
+    Importing cause issues with coverage,
+        (modules can be removed from sys.modules to prevent this)
+    Importing __init__.py triggers importing rest and then requests too
+    Inspired from pep8 setup.py
+    """
+    with open(os.path.join('../../mm_pal', '__init__.py')) as init_fd:
+        for line in init_fd:
+            if line.startswith('__version__'):
+                return eval(line.split('=')[-1])
+    return None
+
+
 # The full version, including alpha/beta/rc tags
-release = '0.0.0'
+release = get_version()
 
 master_doc = 'index'
 

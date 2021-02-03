@@ -7,6 +7,7 @@ from time import sleep
 import pytest
 from serial.tools import list_ports
 from mm_pal.serial_driver import SerialDriver
+from conftest import EXT_PORT
 
 
 def _confirm_echo_readline(ser_dri):
@@ -15,8 +16,8 @@ def _confirm_echo_readline(ser_dri):
 
 
 @pytest.mark.parametrize("fos", [True, False])
-def test_init_flush_on_startup(mock_lb, vpr_inst, fos):
-    port = vpr_inst.ext_port
+def test_init_flush_on_startup(mock_lb, fos):
+    port = EXT_PORT
     SerialDriver(port, flush_on_startup=fos)
     mock_lb.force_timeout = 1
     if fos:
@@ -35,13 +36,13 @@ def test_init_usb_only():
     SerialDriver(use_port_that_contains="/dev")
 
 
-def test_init_args(mock_lb, vpr_inst):
-    _confirm_echo_readline(SerialDriver(vpr_inst.ext_port))
-    _confirm_echo_readline(SerialDriver(vpr_inst.ext_port, 115200))
+def test_init_args(mock_lb):
+    _confirm_echo_readline(SerialDriver(EXT_PORT))
+    _confirm_echo_readline(SerialDriver(EXT_PORT, 115200))
 
 
-def test_init_kwargs(mock_lb, vpr_inst):
-    _confirm_echo_readline(SerialDriver(port=vpr_inst.ext_port,
+def test_init_kwargs(mock_lb):
+    _confirm_echo_readline(SerialDriver(port=EXT_PORT,
                                         rts=True,
                                         dtr=True))
     with pytest.raises(TypeError):
@@ -49,13 +50,13 @@ def test_init_kwargs(mock_lb, vpr_inst):
         ser_dri = SerialDriver(port="foo")
 
     mock_lb.force_timeout = 1
-    ser_dri = SerialDriver(port=vpr_inst.ext_port,
+    ser_dri = SerialDriver(port=EXT_PORT,
                            reconnect_on_timeout=False)
     with pytest.raises(TimeoutError):
         _confirm_echo_readline(ser_dri)
     _confirm_echo_readline(ser_dri)
 
-    ser_dri = SerialDriver(port=vpr_inst.ext_port,
+    ser_dri = SerialDriver(port=EXT_PORT,
                            reconnect_on_timeout=True)
     mock_lb.force_timeout = 1
     with pytest.raises(TimeoutError):
@@ -92,13 +93,13 @@ def test_readline_to_delim(mock_lb, ser_dri):
     ser_dri.writeline("bar")
     ser_dri.writeline(">")
     lines = ser_dri.readlines_to_delim()
-    sleep(0.1)
+    sleep(0.3)
     assert lines == "foo\nbar\n"
 
     ser_dri.writeline("foo")
     ser_dri.writeline("bar")
     ser_dri.writeline("DELIM")
-    sleep(0.1)
+    sleep(0.3)
     lines = ser_dri.readlines_to_delim(delim="DELIM")
     assert lines == "foo\nbar\n"
 
@@ -115,6 +116,10 @@ def test_read(mock_lb, ser_dri):
 
     with pytest.raises(TimeoutError):
         ser_dri.read()
+    ser_dri._reconnect_on_timeout = True
+    with pytest.raises(TimeoutError):
+        ser_dri.read()
+
 
 
 @pytest.mark.parametrize("test_string", ['test', 'another_test'])
