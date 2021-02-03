@@ -29,7 +29,7 @@ import argparse
 from mock_pal.mock_dev import MockDev, VirtualPortRunner
 from mock_pal.mock_dev import log_level_module_control
 from mock_pal.mock_if import MockIf
-from mm_pal import MmCmd, serial_connect_wizard, write_history_file
+from mm_pal import MmCmd, serial_connect_wizard
 
 
 class MockCli(MmCmd):
@@ -44,14 +44,18 @@ class MockCli(MmCmd):
             **kwargs:
         """
         self.logger = logging.getLogger(self.__class__.__name__)
+        hist = kwargs.pop('persistent_history_file', None)
+        cmd_kwargs = {"persistent_history_file": hist}
         if 'dev_driver' in kwargs:
-            super().__init__(kwargs['dev_driver'])
+            super().__init__(kwargs['dev_driver'], **cmd_kwargs)
             return
         port = kwargs.get('port', None)
+
         if port is None:
-            super().__init__(serial_connect_wizard(MockIf, **kwargs))
+            super().__init__(serial_connect_wizard(MockIf, **kwargs),
+                             **cmd_kwargs)
         else:
-            super().__init__(MockIf(**kwargs))
+            super().__init__(MockIf(**kwargs), **cmd_kwargs)
         self.logger.debug("__init__(%r)", kwargs)
 
     def do_special_cmd(self, arg):
@@ -60,12 +64,8 @@ class MockCli(MmCmd):
         Usage:
             special_cmd
         """
-        try:
-            resp = self.dev_driver.special_cmd()
-            print(resp)
-        except (TypeError, ValueError, SyntaxError) as exc:
-            print(exc)
-            print("args", arg)
+        self.logger.debug("do_special_cmd(arg=%r)", arg)
+        self.poutput(self.dev_driver.special_cmd())
 
 
 def main():
@@ -95,14 +95,10 @@ def main():
         mdev = MockDev(port=vpr.mock_port)
         mdev.start_thread_loop(func=mdev.run_app_json)
         port = vpr.ext_port
-    try:
-        MockCli(port=port, mm_path=pargs.mm_path).cmdloop()
-    except KeyboardInterrupt:
-        write_history_file()
-        print("")
-    finally:
-        if pargs.sim:
-            mdev.end_thread_loop()
+
+    MockCli(port=port, mm_path=pargs.mm_path).cmdloop()
+    if pargs.sim:
+        mdev.end_thread_loop()
 
 
 if __name__ == '__main__':

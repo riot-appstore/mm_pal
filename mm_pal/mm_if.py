@@ -9,8 +9,7 @@ access to devices as well as some basic commands. The target is for
 resource contrained devices that require many parameters to write and
 read. On instantiation, a driver is selected, serial by default, and a
 parser is selected, json by default. A command is given, such as
-`read_register` and have an expected response shown in the
-``response_schema.json``.
+`read_register` and have an expected response.
 
 Generation of a memory map can be done with the
 `Memory Map Manager <https://github.com/riot-appstore/memory_map_manager>`_
@@ -30,21 +29,7 @@ __author__ = "Kevin Weiss"
 __email__ = "weiss.kevin604@gmail.com"
 
 
-RESULT_SUCCESS = 'Success'
-"""str: Value of the ``result`` when command was successful."""
-
-RESULT_ERROR = 'Error'
-"""str: Value of the ``result`` when command had an error.
-
-This occurs when device receives a command but returns an error.
-"""
-
-RESULT_TIMEOUT = 'Timeout'
-"""str: Value of the ``result`` when command had a timeout.
-
-This occurs when device either does not receive a command or an issue with
-the device prevent any parsable response.
-"""
+MM_IF_EXCEPTIONS = IOError, ValueError, KeyError, TimeoutError, RuntimeError
 
 
 def _try_parse_int_list(list_int):
@@ -80,7 +65,7 @@ def import_mm_from_csv(path):
 class MmJsonParser:
     """Json style parser for interfacing to memory map based devices.
 
-    Send command and parse response to fit response schema. Read lines
+    Send command and parse response. Read lines
     until json information contains a ``result``. Convert result to
     ``RESULT_*`` type. Add `cmd` element with evaluated call.
 
@@ -97,9 +82,7 @@ class MmJsonParser:
         return parsed data:
         ::
 
-            {'cmd': "read_bytes(index=0, size=3)",
-             'data'=[0, 1, 2],
-             'result'="Success"}
+            [0, 1, 2]
     """
 
     def __init__(self, driver):
@@ -109,47 +92,24 @@ class MmJsonParser:
             driver (obj): Driver to send and receive information to parse.
         """
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.debug("__init__(driver=%r)", driver)
         self.driver = driver
 
-    def read_bytes(self, index, size=1, timeout=None):
-        """Read bytes from driver and parse the output.
+    def _error_msg(self, error_code):
+        self.logger.debug("_error_msg("
+                          "error_code=%r)", error_code)
+        if error_code not in errno.errorcode:
+            raise IOError(f"Unknown Error[{error_code}]")
+        s_errcode = errno.errorcode[error_code]
+        s_errmsg = os.strerror(error_code)
+        raise IOError(f"{s_errcode}-{s_errmsg} [{error_code}]")
 
-        Send the ``rr <index> <size>`` command to the driver.
-
-        Args:
-            index (int): Index of the memory map register.
-            size (int): Amount of bytes to read, defaults to 1.
-            to_byte_array (bool): Forces result to remain as byte array,
-                defaults to False.
-            timeout (float): Optional override driver timeout for command,
-                defaults to None.
-
-        Return:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': read_reg_cmd_string,
-                    'data': bytes_read_from_device,
-                    'result': "Success"
-                }
-
-
-        """
-        return self.send_and_parse_cmd((f'rr {index} {size}'), timeout)
-
-    @staticmethod
-    def _error_msg(data):
-        if data not in errno.errorcode:
-            return f"Unknown Error[{data}]"
-        s_errcode = errno.errorcode[data]
-        s_errmsg = os.strerror(data)
-        return f"{s_errcode}-{s_errmsg} [{data}]"
-
-    def _send_cmd(self, send_cmd, timeout, end_key='result'):
-        self.driver.writeline(send_cmd)
+    def _send_cmd(self, cmd, timeout, end_key='result'):
+        self.logger.debug("_send_cmd("
+                          "cmd=%r, "
+                          "timeout=%r, "
+                          "end_key=%r)", cmd, timeout, end_key)
+        self.driver.writeline(cmd)
         cmd_info = {}
         while end_key not in cmd_info:
             line = self.driver.readline(timeout)
@@ -158,11 +118,10 @@ class MmJsonParser:
                 # this allows us to have debug messages in our command
                 cmd_info.update(json.loads(line))
             except json.decoder.JSONDecodeError:
-                self.logger.warning("JSON parse error: "
-                                    "send_cmd=%r, line=%r", send_cmd, line)
+                self.logger.warning("JSON parse error: line=%r", line)
         return cmd_info
 
-    def send_and_parse_cmd(self, send_cmd, timeout=None):
+    def send_and_parse_cmd(self, cmd, timeout=None):
         """Return a dictionary with information from the event.
 
         Args:
@@ -172,62 +131,58 @@ class MmJsonParser:
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
         Returns:
-            dict:
-            See the ``schemas/response_schema.json``
+            dict: parsed json data
         """
-        cmd_info = {'cmd': [send_cmd]}
-        try:
-            cmd_info.update(self._send_cmd(send_cmd, timeout=timeout))
-        except TimeoutError:
-            cmd_info['result'] = RESULT_TIMEOUT
-        else:
-            if cmd_info['result'] == 0:
-                cmd_info['result'] = RESULT_SUCCESS
-            else:
-                cmd_info['error_code'] = cmd_info['result']
-                cmd_info['result'] = RESULT_ERROR
-                cmd_info['msg'] = self._error_msg(cmd_info['error_code'])
-        return cmd_info
+        self.logger.debug("send_and_parse_cmd("
+                          "cmd=%r, "
+                          "timeout=%r)", cmd, timeout)
+        resp = self._send_cmd(cmd, timeout=timeout)
 
-    @staticmethod
-    def _write_byte_arg_to_string(data, size):
-        ret_str = ''
-        if isinstance(data, list):
-            for data_byte in data:
-                for i in range(0, size):
-                    ret_str += f" {(int(data_byte) >> (i * 8)) & 0xFF}"
-        else:
-            for i in range(0, size):
-                ret_str += f" {(int(data) >> ((i) * 8)) & 0xFF}"
-        return ret_str
+        if resp['result'] == 0:
+            return resp
+        return self._error_msg(resp['result'])
 
-    def write_bytes(self, index, data, size=1, timeout=None):
+    def read_bytes(self, index, size=1, timeout=None):
+        """Read bytes from driver and parse the output.
+
+        Send the ``rr <index> <size>`` command to the driver.
+
+        Args:
+            index (int): Index of the memory map register.
+            size (int): Amount of bytes to read, defaults to 1.
+            timeout (float): Optional override driver timeout for command,
+                defaults to None.
+
+        Return:
+            list: bytes from device.
+
+
+        """
+        self.logger.debug("read_bytes("
+                          "index=%r, "
+                          "size=%r, "
+                          "timeout=%r)", index, size, timeout)
+        return self.send_and_parse_cmd((f'rr {index} {size}'), timeout)['data']
+
+    def write_bytes(self, index, data, timeout=None):
         """Write bytes in the register map.
 
         Args:
             index (int): Index of the memory map register.
-            data (list, int): Data to write.
-            size (int): Size of bytes of the data type, defaults to 1.
+            data (list): Data to write, list of bytes.
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
 
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': write_reg_cmd_string,
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
         self.logger.debug("write_bytes(index=%r, "
                           "data=%r, "
-                          "size=%r, "
-                          "timeout=%r)", index, data, size, timeout)
-        cmd = f"wr {index}{self._write_byte_arg_to_string(data, size)}"
-        return self.send_and_parse_cmd(cmd, timeout=timeout)
+                          "timeout=%r)", index, data, timeout)
+        wbytes = " ".join(map(str, data))
+        cmd = f"wr {index} {wbytes}"
+        self.send_and_parse_cmd(cmd, timeout=timeout)
 
     def commit(self, timeout=None):
         """Commit device configuration changes.
@@ -239,18 +194,11 @@ class MmJsonParser:
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
 
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': commit_cmd_string,
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.send_and_parse_cmd("ex", timeout=timeout)
+        self.send_and_parse_cmd("ex", timeout=timeout)
 
     def soft_reset(self, timeout=None):
         """Send command to get the device to reset itself.
@@ -259,18 +207,12 @@ class MmJsonParser:
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
 
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': soft_reset_cmd_string,
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.send_and_parse_cmd("mcu_rst", timeout=timeout)
+        self.logger.debug("soft_reset(timeout=%r", timeout)
+        self.send_and_parse_cmd("mcu_rst", timeout=timeout)
 
     def get_version(self, timeout=None):
         """Get interface version from device.
@@ -280,17 +222,15 @@ class MmJsonParser:
                 defaults to None.
 
         Returns:
-            dict: Parsed command response.
+            str: version string
 
-            Example:
-            ::
-
-                {
-                    'version': "0.0.0",
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.send_and_parse_cmd("version", timeout=timeout)
+        self.logger.debug("get_version(timeout=%r", timeout)
+        resp = self.send_and_parse_cmd("version", timeout=timeout)
+        return resp['version']
 
 
 class MmIf:
@@ -324,6 +264,7 @@ class MmIf:
             For args and kwargs, check specific driver for clarification.
         """
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.debug("__init__(args=%r, kwargs=%r)", args, kwargs)
 
         driver_type = kwargs.pop('driver_type', 'serial')
         parser_type = kwargs.pop('parser_type', 'json')
@@ -346,6 +287,7 @@ class MmIf:
 
     @driver.setter
     def driver(self, val):
+        self.logger.debug("driver(val=%r)", val)
         self._driver = val
         # I don't remember why we needed this but it is somehow important
         # I think it is something to do with reverse dependency issues
@@ -356,65 +298,45 @@ class MmIf:
         except AttributeError:
             self.logger.warning("AttributeError setting parser driver")
 
-    @staticmethod
-    def _driver_from_config(driver_type, *args, **kwargs):
+    def _driver_from_config(self, driver_type, *args, **kwargs):
         """Return driver instance given configuration."""
+        self.logger.debug("_driver_from_config("
+                          "driver_type=%r"
+                          "args=%r"
+                          "kwargs=%r)", driver_type, args, kwargs)
         if driver_type == 'serial':
             return SerialDriver(*args, **kwargs)
         raise NotImplementedError()
 
     def _parser_from_config(self, parser_type):
         """Return driver instance given configuration."""
+        self.logger.debug("_parser_from_config("
+                          "driver_type=%r)", parser_type)
         if parser_type == 'json':
             return MmJsonParser(self.driver)
         raise NotImplementedError()
 
-    # pylint: disable=R0913
-    def _write_bits(self, index, offset, bit_amount, data, timeout=None):
-        """Modify specific bits in the register map.
+    def _retry_func(self, func, retry, *args, **kwargs):
+        self.logger.debug("_retry_func(func=%r, "
+                          "retry=%r, "
+                          "args=%r, "
+                          "kwargs=%r)", func, retry, args, kwargs)
+        resp = None
+        final_exc = None
+        if retry is None:
+            retry = self.default_retry
+        for _ in range(retry + 1):
+            try:
+                resp = func(*args, **kwargs)
+                break
+            except (MM_IF_EXCEPTIONS) as exc:
+                self.logger.warning("failed func due to %r, retrying ", exc)
+                final_exc = exc
+        else:
+            raise final_exc
+        return resp
 
-        Args:
-            index (int): Index of the memory map (address or offset of bytes).
-            offset (int): The bit offset for the bitfield.
-            bit_amount (int): The amount of bits within the bitfield.
-            data (int): The data to be converted to bytes then written to
-                the map.
-            timeout (float): Optional override driver timeout for command,
-                defaults to None.
-
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-                {
-                    'cmd': [write_bits_cmd, write_bytes_cmd],
-                    'result': "Success"
-                }
-        """
-        cmds = [f"write_bits({index},{offset},{bit_amount},{data})"]
-        bit_amount = int(bit_amount)
-        offset = int(offset)
-        index = int(index)
-        bytes_to_read = int((bit_amount - 1 + offset)/8 + 1)
-        cmd_info = self.parser.read_bytes(index, bytes_to_read,
-                                          timeout=timeout)
-        if cmd_info['result'] != RESULT_SUCCESS:
-            return cmd_info
-        cmds.append(cmd_info['cmd'])
-        bit_mask = int((2 ** bit_amount) - 1)
-        bit_mask = bit_mask << offset
-        cmd_info['data'] = int.from_bytes(cmd_info['data'], byteorder='little')
-        cmd_info['data'] = cmd_info['data'] & (~bit_mask)
-        shifted_data = cmd_info['data'] | ((data << offset) & bit_mask)
-        cmd_info = self.parser.write_bytes(index, shifted_data,
-                                           bytes_to_read, timeout=timeout)
-        cmds.append(cmd_info['cmd'])
-        cmd_info['cmd'] = cmds
-
-        return cmd_info
-
-    def commit(self, timeout=None):
+    def commit(self, timeout=None, retry=None):
         """Commit device configuration changes.
 
         This will cause any changes in configuration to be applied. Call
@@ -424,40 +346,28 @@ class MmIf:
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
 
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': commit_cmd_string,
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.parser.commit(timeout=timeout)
+        self.logger.debug("commit(timeout=%r,retry=%r)", timeout, retry)
+        self._retry_func(self.parser.commit, retry, timeout=timeout)
 
-    def soft_reset(self, timeout=None):
+    def soft_reset(self, timeout=None, retry=None):
         """Send command to get the device to reset itself.
 
         Args:
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
 
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': soft_reset_cmd_string,
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.parser.soft_reset(timeout=timeout)
+        self.logger.debug("soft_reset(timeout=%r,retry=%r)", timeout, retry)
+        self._retry_func(self.parser.soft_reset, retry, timeout=timeout)
 
-    def get_version(self, timeout=None):
+    def get_version(self, timeout=None, retry=None):
         """Get interface version from device.
 
         Args:
@@ -465,17 +375,16 @@ class MmIf:
                 defaults to None.
 
         Returns:
-            dict: Parsed command response.
+            str: Version string
 
-            Example:
-            ::
-
-                {
-                    'version': "0.0.0",
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
         """
-        return self.parser.get_version(timeout=timeout)
+        self.logger.debug("get_version(timeout=%r, retry=%r)", timeout, retry)
+        version = self._retry_func(self.parser.get_version, retry,
+                                   timeout=timeout)
+        return version
 
     @staticmethod
     def _c_cast(num, prim_type):
@@ -507,216 +416,148 @@ class MmIf:
         return parsed_data
 
     @staticmethod
-    def _parse_resp_bit(cmd, resp):
-        bits = int(cmd['bits'])
-        offset = int(cmd['bit_offset'])
+    def _parse_resp_bit(reg_info, r_data):
+        bits = int(reg_info['bits'])
+        offset = int(reg_info['bit_offset'])
         bit_mask = (2 ** bits) - 1
-        data = int.from_bytes(resp['data'], byteorder='little')
+        data = int.from_bytes(r_data, byteorder='little')
         data = data >> offset
-        data = data & bit_mask
-        resp['data'] = data
+        return data & bit_mask
 
-    @staticmethod
-    def _get_off_size_cmd(cmd, offset, size):
+    def _get_off_size_reg(self, reg_info, offset, size):
+        self.logger.debug("_get_off_size_reg("
+                          "reg_info=%r, "
+                          "offset=%r, "
+                          "size=%r)", reg_info, offset, size)
         if size is None:
-            if cmd['total_size'] == '':
-                size = cmd['type_size']
+            if reg_info['total_size'] == '':
+                size = reg_info['type_size']
             else:
-                size = cmd['total_size']
-        elif cmd['total_size'] != '':
-            size = int(cmd['type_size']) * int(size)
-        if cmd['total_size'] != '':
+                size = reg_info['total_size']
+        elif reg_info['total_size'] != '':
+            size = int(reg_info['type_size']) * int(size)
+        if reg_info['total_size'] != '':
             offset = int(offset)
-            offset *= int(cmd['type_size'])
-            offset += int(cmd['offset'])
-            max_mem = int(cmd['offset']) + int(cmd['total_size'])
-            assert max_mem >= offset + size
+            offset *= int(reg_info['type_size'])
+            offset += int(reg_info['offset'])
+            max_mem = int(reg_info['offset']) + int(reg_info['total_size'])
+            if max_mem < offset + size:
+                raise ValueError(f"array out of bounds, "
+                                 f"{offset+size} must be greater than{max_mem}"
+                                 f", {reg_info}")
         else:
-            offset = int(cmd['offset'])
-            size = int(cmd['type_size'])
+            offset = int(reg_info['offset'])
+            size = int(reg_info['type_size'])
         return offset, size
 
-    def _parse_resp_cmd(self, cmd, resp):
-
-        resp['data'] = self._parse_array(resp['data'], cmd['type_size'],
-                                         cmd['type'])
-        if cmd['total_size'] == '':
-            resp['data'] = resp['data'][0]
+    def _parse_resp_reg(self, reg_info, r_data):
+        self.logger.debug("_parse_resp_reg("
+                          "reg_info=%r, "
+                          "r_data=%r)", reg_info, r_data)
+        data = self._parse_array(r_data, reg_info['type_size'],
+                                 reg_info['type'])
+        if reg_info['total_size'] == '':
+            return data[0]
+        return data
 
     def _read_bytes_with_parser(self, offset, size, retry, timeout):
-        retry_count = 0
+        self.logger.debug("_read_bytes_with_parser("
+                          "offset=%r, "
+                          "size=%r, "
+                          "retry=%r, "
+                          "timeout=%r)", offset, size, retry, timeout)
         data = []
-        cmds = []
-        resp = {}
-        if retry is None:
-            retry = self.default_retry
 
         frag_size = self.frag_size or size
         for byte_cnt in range(0, size, frag_size):
-            for _ in range(retry + 1):
-                bytes_to_read = min(size-byte_cnt, frag_size)
-                resp = self.parser.read_bytes(offset + byte_cnt, bytes_to_read,
-                                              timeout=timeout)
-                cmds.extend(resp['cmd'])
-                if resp["result"] == RESULT_SUCCESS:
-                    data.extend(resp['data'])
-
-                    break
-                retry_count += 1
-            if resp["result"] != RESULT_SUCCESS:
-                break
-
-        resp['cmd'] = cmds
-        resp['retry'] = retry_count
-        if resp["result"] == RESULT_SUCCESS:
-            resp["data"] = data
-        return resp
+            rbytes = self._retry_func(self.parser.read_bytes,
+                                      retry,
+                                      offset + byte_cnt,
+                                      min(size-byte_cnt, frag_size),
+                                      timeout=timeout)
+            data.extend(rbytes)
+        return data
 
     # pylint: disable=R0913
-    def read_reg(self, cmd_name, offset=0, size=None,
+    def read_reg(self, reg, offset=0, size=None,
                  timeout=None, retry=None):
         """Read a register defined by the memory map.
 
         Args:
-            cmd_name (str): The name of the register to read.
+            reg (str): The name of the register to read.
             offset (int): The number of elements to offset in an array.
             size (int): The number of elements to read in an array.
             timeout (float): Optional override driver timeout for command,
                 defaults to None.
             retry (int): Retries on failure
-        Returns:
-            dict: Parsed command response.
-
-            Example:
-            ::
-
-                {
-                    'cmd': [read_register_cmd, read_bytes_cmd],
-                    'data': register_data,
-                    'retry': 0
-                    'result': "Success"
-                }
-
-                {
-                    'cmd': [read_register_cmd, read_bytes_cmd],
-                    'error_code': 40,
-                    'retry': 3
-                    'result': "Error"
-                }
-        """
-        r_cmd = f"read_reg(cmd_name={cmd_name},offset={offset},size={size})"
-        cmd = self.mem_map[cmd_name]
-        try:
-            offset, size = self._get_off_size_cmd(cmd, offset, size)
-        except AssertionError:
-            return {'cmd': r_cmd, 'result': RESULT_ERROR, 'error_code': 22}
-
-        resp = self._read_bytes_with_parser(offset, size, retry, timeout)
-
-        resp['cmd'].insert(0, r_cmd)
-
-        if resp["result"] != RESULT_SUCCESS:
-            return resp
-
-        if cmd['bits'] != '':
-            self._parse_resp_bit(cmd, resp)
-        else:
-            self._parse_resp_cmd(cmd, resp)
-        return resp
-
-    def write_reg(self, cmd_name, data, offset=0, timeout=None):
-        """Write a register defined by the memory map.
-
-        Args:
-            cmd_name (str): The name of the register to write.
-            data (list, int): The data to write to the register.
-            offset (int): The number of elements to offset in an array,
-                defaults to 0.
-            timeout (float): Optional override driver timeout for command,
-                defaults to None.
 
         Returns:
-            dict: Parsed command response.
+            int, list: Parsed response depending on register type.
 
-            Example:
-            ::
-
-                {
-                    'cmd': [write_register_cmd, write_bytes_cmd],
-                    'result': "Success"
-                }
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
+            ValueError: Argument incorrect
         """
-        self.logger.debug("write_bytes(cmd_name=%r, "
-                          "data=%r, "
+        self.logger.debug("read_reg("
+                          "reg=%r, "
                           "offset=%r, "
-                          "timeout=%r)", cmd_name, data, offset, timeout)
-        cmd = self.mem_map[cmd_name]
-        data = literal_eval(str(data))
-        response = None
-        if cmd['bits'] != '':
-            response = self._write_bits(cmd['offset'],
-                                        cmd['bit_offset'],
-                                        cmd['bits'], data)
-        elif cmd['total_size'] != '':
-            offset = int(offset)
-            offset *= int(cmd['type_size'])
-            offset += int(cmd['offset'])
-            if offset + int(cmd['type_size']) >= int(cmd['total_size']):
-                response = {'result': RESULT_ERROR, 'cmd': []}
-            else:
-                response = self.parser.write_bytes(offset, data,
-                                                   int(cmd['type_size']),
-                                                   timeout=timeout)
-        else:
-            response = self.parser.write_bytes(cmd['offset'], data,
-                                               int(cmd['type_size']),
-                                               timeout=timeout)
-        response['cmd'] = [f"write_reg({cmd_name},{data},{offset})",
-                           response['cmd']]
-        return response
+                          "size=%r, "
+                          "timeout=%r, "
+                          "retry=%r)", reg, offset, size, timeout, retry)
+        reg_info = self.mem_map[reg]
 
-    def _get_off_size_cmds(self, cmds):
+        offset, size = self._get_off_size_reg(reg_info, offset, size)
+
+        data = self._read_bytes_with_parser(offset, size, retry, timeout)
+
+        if reg_info['bits'] != '':
+            data = self._parse_resp_bit(reg_info, data)
+        else:
+            data = self._parse_resp_reg(reg_info, data)
+        return data
+
+    def _get_off_size_regs(self, regs):
+        self.logger.debug("_get_off_size_regs(regs=%r)", regs)
         size = 0
-        offset = self.mem_map[cmds[0]]['offset']
-        last_size = self.mem_map[cmds[-1]]['total_size']
+        offset = self.mem_map[regs[0]]['offset']
+        last_size = self.mem_map[regs[-1]]['total_size']
         if last_size == '':
-            last_size = self.mem_map[cmds[-1]]['type_size']
-        size = self.mem_map[cmds[-1]]['offset'] + last_size
+            last_size = self.mem_map[regs[-1]]['type_size']
+        size = self.mem_map[regs[-1]]['offset'] + last_size
         return offset, size
 
-    def _parse_read_struct(self, cmds, resp, data_has_name):
+    def _parse_read_struct(self, regs, rdata, data_has_name):
+        self.logger.debug("_parse_read_struct("
+                          "regs=%r, "
+                          "rdata=%r, "
+                          "data_has_name=%r)", regs, rdata, data_has_name)
         resps = []
         last_offset = -1
         data = None
-        for cmd_name in cmds:
+        for reg in regs:
 
-            cmd = self.mem_map[cmd_name]
-            tmp, cmd_size = self._get_off_size_cmd(cmd, 0, None)
+            reg_info = self.mem_map[reg]
+            offset, reg_size = self._get_off_size_reg(reg_info, 0, None)
 
-            cmd_n = f"read_struct(cmd_name={cmd_name},"
-            cmd_n += f"offset={tmp},"
-            cmd_n += f"size={cmd_size})"
             # In order to not remove data when bitfields are used we make
             # sure the offset does not change when popping new data
-            if tmp != last_offset:
-                data = [resp['data'].pop(0) for idx in range(cmd_size)]
-            last_offset = tmp
-            if cmd_name.endswith('.res'):
+            if offset != last_offset:
+                data = [rdata.pop(0) for idx in range(reg_size)]
+            last_offset = offset
+            if reg.endswith('.res'):
                 continue
-            cmd_resp = {'cmd': cmd_n,
-                        'result': resp['result'],
-                        'retry': resp['retry'],
-                        'data': data}
-            if cmd['bits'] != '':
-                self._parse_resp_bit(cmd, cmd_resp)
+            if reg_info['bits'] != '':
+                result = self._parse_resp_bit(reg_info, data)
             else:
-                self._parse_resp_cmd(cmd, cmd_resp)
+                result = self._parse_resp_reg(reg_info, data)
             if data_has_name:
-                cmd_resp['data'] = {cmd_name: cmd_resp['data']}
-            resps.append(cmd_resp)
+                resps.append({reg: result})
+            else:
+                resps.append(result)
         return resps
 
-    def read_struct(self, cmd_start, data_has_name=True, timeout=None,
+    def read_struct(self, struct, data_has_name=True, timeout=None,
                     retry=None):
         """Read a set of registers defined by the memory map.
 
@@ -732,39 +573,156 @@ class MmIf:
             retry (int): Optional override retry count, defaults to None.
 
         Returns:
-            list: List of parsed command response.
+            list: Parsed responses depending on each register type.
 
-        Example:
-        ::
-
-            [{
-                'cmd': [read_register_cmd0, read_bytes_cmd0],
-                'data': read_data,
-                'result': "Success"
-            },
-            {
-                'cmd': [read_register_cmd1, read_bytes_cmd1],
-                'data': read_data,
-                'result': "Success"
-            }]
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
+            ValueError: Argument incorrect
         """
-        cmds = []
+        self.logger.debug("read_struct(struct=%r, "
+                          "data_has_name=%r, "
+                          "timeout=%r, "
+                          "retry=%r)", struct, data_has_name, timeout, retry)
         started = False
+        regs = []
         # We want to collect all names starting with the cmd_start
         for name in self.mem_map.keys():
-            if name.startswith(cmd_start):
-                cmds.append(name)
+            if name.startswith(struct):
+                regs.append(name)
                 started = True
             elif started is True:
                 # If there is a break in the list we should exit out
                 # otherwise the data will not be grouped.
                 break
-        if len(cmds) == 0:
-            return {"result": RESULT_ERROR,
-                    "cmd": [f"read_struct({cmd_start})"]}
-        offset, size = self._get_off_size_cmds(cmds)
-        resp = self._read_bytes_with_parser(offset, size, retry, timeout)
-        resp['cmd'].insert(0, f"read_struct({cmd_start})")
-        if resp['result'] != RESULT_SUCCESS:
-            return resp
-        return self._parse_read_struct(cmds, resp, data_has_name)
+        offset, size = self._get_off_size_regs(regs)
+        data = self._read_bytes_with_parser(offset, size, retry, timeout)
+        data = self._parse_read_struct(regs, data, data_has_name)
+        return data
+
+    def _write_data_to_bytes(self, reg_info, data):
+        self.logger.debug("_write_data_to_bytes(reg_info=%r, "
+                          "data=%r)", reg_info, data)
+        signed = False
+        if reg_info['type'].startswith('int'):
+            signed = True
+        wdata = bytearray()
+        if isinstance(data, int):
+            wdata = data.to_bytes(reg_info['type_size'], "little",
+                                  signed=signed)
+        else:
+            for element in data:
+                wdata += element.to_bytes(reg_info['type_size'], "little",
+                                          signed=signed)
+        return list(wdata)
+
+    def _write_bytes_with_parser(self, data, offset, size, retry, timeout):
+        self.logger.debug("_write_bytes_with_parser("
+                          "data=%r, "
+                          "offset=%r, "
+                          "size=%r, "
+                          "retry=%r, "
+                          "timeout=%r, ", data, offset, size, retry, timeout)
+        frag_size = self.frag_size or size
+        for byte_cnt in range(0, size, frag_size):
+            bytes_to_write = min(size - byte_cnt, frag_size)
+            self._retry_func(self.parser.write_bytes,
+                             retry,
+                             offset + byte_cnt,
+                             data[:bytes_to_write],
+                             timeout=timeout)
+            for _ in range(bytes_to_write):
+                data.pop(0)
+
+    @staticmethod
+    def _parse_write_bit(cmd, w_data, r_data):
+        bits = int(cmd['bits'])
+        offset = int(cmd['bit_offset'])
+        bit_mask = (2 ** bits) - 1
+        if w_data > bit_mask:
+            raise ValueError(f"Writing value outside bitfield"
+                             f" {w_data} !<= {bit_mask}")
+        data = r_data & ~(bit_mask << offset)
+        data = (w_data << offset) | data
+        return list(data.to_bytes(cmd['type_size'], 'little'))
+
+    @staticmethod
+    def _prep_write_data(data):
+        if isinstance(data, list):
+            if len(data) == 1:
+                data = data[0]
+        if isinstance(data, list):
+            elements = []
+            for element in data:
+                elements.append(literal_eval(str(element)))
+            data = elements
+        else:
+            data = literal_eval(str(data))
+        return data
+
+    def _write_formatted_bytes(self, reg_info, data, offset, size, timeout,
+                               retry):
+        wb_offset, wb_size = self._get_off_size_reg(reg_info, offset, size)
+        wb_data = self._write_data_to_bytes(reg_info, data)
+        if reg_info['bits'] != '':
+            rb_data = self._read_bytes_with_parser(wb_offset, wb_size, retry,
+                                                   timeout)
+            rb_data = int.from_bytes(bytearray(rb_data), 'little')
+            self.logger.debug("_parse_write_bit(reg_info=%r, "
+                              "data=%r, "
+                              "rb_data=%r)", reg_info, data, rb_data)
+            wb_data = self._parse_write_bit(reg_info, data, rb_data)
+        self._write_bytes_with_parser(wb_data, wb_offset, wb_size, retry,
+                                      timeout)
+
+    def write_reg(self, reg, data, offset=0, verify=False, timeout=None,
+                  retry=None):
+        """Write a register defined by the memory map.
+
+        Args:
+            cmd_name (str): The name of the register to write.
+            data (list, int, str): The data to write to the register.
+            verify (bool): Verify the register has changed, defaults to False
+            offset (int): The number of elements to offset in an array,
+                defaults to 0.
+            timeout (float): Optional override driver timeout for command,
+                defaults to None.
+            retry (int): Optional override retry count, defaults to None.
+
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
+            ValueError: Argument incorrect
+            TypeError: Data type not correct
+        """
+        self.logger.debug("write_bytes(reg=%r, "
+                          "data=%r, "
+                          "offset=%r, "
+                          "timeout=%r,"
+                          "retry=%r)", reg, data, offset, timeout, retry)
+
+        data = self._prep_write_data(data)
+
+        self.logger.debug("parser data is %r", data)
+
+        reg_info = self.mem_map[reg]
+        if isinstance(data, list):
+            size = len(data)
+            if size > 1 and reg_info['bits'] != '':
+                raise TypeError(f"Cannot parse arrays of bitfields{data}")
+            if size > 1 and reg_info['total_size'] == '':
+                raise TypeError(f"Cannot parse arrays if int, {data}")
+        elif isinstance(data, int):
+            size = 1
+        else:
+            raise TypeError(f"Cannot parse {data}")
+
+        self._write_formatted_bytes(reg_info, data, offset, size, timeout,
+                                    retry)
+
+        if verify:
+            v_data = self.read_reg(reg, offset=offset, timeout=timeout,
+                                   size=size, retry=retry)
+            if data != v_data:
+                raise RuntimeError(f"Verification of written data failed! "
+                                   f"wrote {data} but read {v_data}")

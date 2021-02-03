@@ -43,10 +43,7 @@ class MockIf(MmIf):
         super().__init__(*args, **kwargs)
 
         # Sometimes initial version string is correct so try again
-        try:
-            self.if_version = self.get_version()['version']
-        except KeyError:
-            self.if_version = self.get_version()['version']
+        self.if_version = self.get_version(retry=2)
 
         if self.mem_map is None:
             version_str = self.if_version.replace('.', '_')

@@ -1,0 +1,10 @@
+{'access': 1,
+ 'array_size': 512,
+ 'bit_offset': '',
+ 'bits': '',
+ 'description': '',
+ 'name': 'arru8',
+ 'offset': 0,
+ 'total_size': 512,
+ 'type': 'uint8_t',
+ 'type_size': 1}

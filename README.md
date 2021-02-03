@@ -11,8 +11,7 @@ This package consists of base classes to build interfaces and a mock
 device used for testing and as an example of implementation.
 
 Device connection such as `serial` and parsers such as `json` are used to get
-standard output defined in the
-[response schema](mm_pal/schemas/response_schema.json).
+standard output
 
 ## Concept
 
