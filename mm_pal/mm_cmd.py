@@ -30,10 +30,10 @@ import logging
 import os
 from pprint import pformat
 from typing import List
-from cmd2 import Cmd, with_argparser
+from cmd2 import Cmd, with_argparser, Settable
 
 
-def add_common_arguments(arg_parser):
+def add_timeout_retry_arguments(arg_parser):
     """Add common arguments to arg parser."""
     arg_parser.add_argument('--timeout', '-t', type=float,
                             help="Time to wait for device to respond (sec)")
@@ -66,6 +66,11 @@ class MmCmd(Cmd):
         kwargs[phf] = kwargs.pop(phf, os.path.join(os.path.expanduser("~"),
                                                    ".mm_history"))
         super().__init__(allow_cli_args=False, *args, **kwargs)
+        self.loglevel = logging.getLevelName(logging.root.level)
+        self.add_settable(Settable('loglevel', str, 'Logging Level',
+                                   choices=['NOTSET', 'DEBUG', 'INFO',
+                                            'WARNING', 'ERROR', 'CRITICAL'],
+                                   onchange_cb=self._onchange_loglevel))
 
     def regs_choices_method(self) -> List[str]:
         """Return a list of valid register names."""
@@ -83,7 +88,7 @@ class MmCmd(Cmd):
                                  help="offset of the array")
     read_reg_parser.add_argument('--size', '-s', type=int,
                                  help="number of elements to read in array")
-    add_common_arguments(read_reg_parser)
+    add_timeout_retry_arguments(read_reg_parser)
 
     @with_argparser(read_reg_parser)
     def do_read_reg(self, opts):
@@ -104,7 +109,7 @@ class MmCmd(Cmd):
                                   help="offset of the array")
     write_reg_parser.add_argument('--verify', '-v', action="store_true",
                                   help="Verify the data was written")
-    add_common_arguments(write_reg_parser)
+    add_timeout_retry_arguments(write_reg_parser)
 
     @with_argparser(write_reg_parser)
     def do_write_reg(self, opts):
@@ -123,7 +128,37 @@ class MmCmd(Cmd):
     read_struct_parser.add_argument('--data-without-names', '-d',
                                     action="store_false",
                                     help="Show only the data without reg name")
-    add_common_arguments(read_struct_parser)
+    add_timeout_retry_arguments(read_struct_parser)
+
+    commit_write_parser = argparse.ArgumentParser()
+    commit_write_parser.add_argument('reg', choices_method=regs_choices_method,
+                                     help="name of the register to read")
+    commit_write_parser.add_argument('data', nargs="+",
+                                     help="Data to write")
+    commit_write_parser.add_argument('--offset', '-o', type=int, default=0,
+                                     help="offset of the array")
+    commit_write_parser.add_argument('--verify', '-v', action="store_true",
+                                     help="Verify the data was written")
+    add_timeout_retry_arguments(commit_write_parser)
+
+    @with_argparser(commit_write_parser)
+    def do_commit_write(self, opts):
+        """Write a register defined by the memory map."""
+        self.dev_driver.commit_write(opts.reg, opts.data,
+                                     offset=opts.offset,
+                                     verify=opts.verify,
+                                     timeout=opts.timeout,
+                                     retry=opts.retry)
+        self.poutput("Success")
+
+    read_struct_parser = argparse.ArgumentParser()
+    read_struct_parser.add_argument('struct',
+                                    choices_method=regs_choices_method,
+                                    help="Name of the struct to read")
+    read_struct_parser.add_argument('--data-without-names', '-d',
+                                    action="store_false",
+                                    help="Show only the data without reg name")
+    add_timeout_retry_arguments(read_struct_parser)
 
     @with_argparser(read_struct_parser)
     def do_read_struct(self, opts):
@@ -134,7 +169,7 @@ class MmCmd(Cmd):
         self.poutput(pformat(resp, compact=True))
 
     commit_parser = argparse.ArgumentParser()
-    add_common_arguments(commit_parser)
+    add_timeout_retry_arguments(commit_parser)
 
     @with_argparser(commit_parser)
     def do_commit(self, opts):
@@ -143,7 +178,7 @@ class MmCmd(Cmd):
         self.poutput("Success")
 
     soft_reset_parser = argparse.ArgumentParser()
-    add_common_arguments(soft_reset_parser)
+    add_timeout_retry_arguments(soft_reset_parser)
 
     @with_argparser(soft_reset_parser)
     def do_soft_reset(self, opts):
@@ -152,7 +187,7 @@ class MmCmd(Cmd):
         self.poutput("Success")
 
     version_parser = argparse.ArgumentParser()
-    add_common_arguments(version_parser)
+    add_timeout_retry_arguments(version_parser)
 
     @with_argparser(version_parser)
     def do_get_version(self, opts):
@@ -209,3 +244,8 @@ class MmCmd(Cmd):
             if opts.param in val:
                 record_types[key] = val[opts.param]
         self.poutput(pformat(record_types, sort_dicts=True))
+
+    # pylint: disable=unused-argument
+    def _onchange_loglevel(self, param_name, old, new):
+        self.loglevel = logging.getLevelName(new)
+        logging.getLogger().setLevel(self.loglevel)

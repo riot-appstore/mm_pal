@@ -274,7 +274,12 @@ class MmIf:
         if mm_path is not None:
             mm_path = import_mm_from_csv(mm_path)
         self.mem_map = kwargs.pop('mem_map', mm_path)
-        self._driver = self._driver_from_config(driver_type, *args, **kwargs)
+        # The pop trick doesn't work here because it evaluates the function
+        if 'driver' in kwargs:
+            self._driver = kwargs['driver']
+        else:
+            self._driver = self._driver_from_config(driver_type,
+                                                    *args, **kwargs)
         self.parser = self._parser_from_config(parser_type)
 
     @property
@@ -726,3 +731,30 @@ class MmIf:
             if data != v_data:
                 raise RuntimeError(f"Verification of written data failed! "
                                    f"wrote {data} but read {v_data}")
+
+    def commit_write(self, reg, data, offset=0, verify=False, timeout=None,
+                     retry=None):
+        """Write and commit in one step.
+
+        This may need to be overridden if commit involves more complicated
+        checks.
+
+        Args:
+            cmd_name (str): The name of the register to write.
+            data (list, int, str): The data to write to the register.
+            verify (bool): Verify the register has changed, defaults to False
+            offset (int): The number of elements to offset in an array,
+                defaults to 0.
+            timeout (float): Optional override driver timeout for command,
+                defaults to None.
+            retry (int): Optional override retry count, defaults to None.
+
+        Exceptions:
+            IOError: Errno based error from device
+            TimeoutError: Device did not respond
+            ValueError: Argument incorrect
+            TypeError: Data type not correct
+        """
+        self.write_reg(reg, data, offset=offset, verify=verify,
+                       timeout=timeout, retry=retry)
+        self.commit(timeout=timeout, retry=retry)

@@ -16,6 +16,7 @@ def test_init(mock_app_json, capsys, kwargs):
 
 @pytest.mark.parametrize("cmd", ["read_reg i8",
                                  "write_reg i8 1",
+                                 "commit_write i8 1",
                                  "read_struct stt",
                                  "commit",
                                  "soft_reset",
@@ -25,6 +26,7 @@ def test_init(mock_app_json, capsys, kwargs):
                                  "info_param name",
                                  "info_param nothing",
                                  "special_cmd",
+                                 "set loglevel INFO",
                                  "key_error"])
 def test_commands(mock_app_json, capsys, regtest, cmd):
     tmp = MockCli(port=EXT_PORT, persistent_history_file="/tmp").onecmd(cmd)
