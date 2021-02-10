@@ -133,6 +133,9 @@ def test_write_reg(mock_app_json, mm_if_inst):
     mm_if_inst.write_reg("arru8", 1)
     assert mock_app_json.wr_bytes == [1]
 
+    mm_if_inst.commit_write("arru8", 2)
+    assert mock_app_json.wr_bytes == [2]
+
     with pytest.raises(ValueError):
         mm_if_inst.write_reg("arru8", 1, offset=9999)
 
@@ -255,6 +258,14 @@ def test_retry(mock_app_json, mm_if_inst):
                                     {"parser_type": 'json'}])
 def test_init(mock_app_json, kwargs):
     mmif = MmIf(port=EXT_PORT, **kwargs)
+    mmif.get_version()
+    mmif.driver.close()
+
+
+def test_copy_driver(mock_app_json):
+    mmif = MmIf(port=EXT_PORT)
+    mmif.get_version()
+    mmif = MmIf(driver=mmif.driver)
     mmif.get_version()
     mmif.driver.close()
 

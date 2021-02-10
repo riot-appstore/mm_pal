@@ -10,4 +10,5 @@ def test_commands(mock_app_json):
     mockif.read_struct("stt")
     mockif.read_reg("arru8")
     mockif.write_reg("arru8", [1, 2, 3])
+    mockif.commit_write("arru8", [1, 2, 3])
     mockif.special_cmd()

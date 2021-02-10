@@ -19,9 +19,9 @@ SLEEP_TIME = 0.1
 MM_PATH = str(Path(__file__).parents[0]) + \
           "/../mock_pal/mem_map/example_map_t_0_0_1.csv"
 
-EXT_PORT="/tmp/mm_pal_dev0"
+EXT_PORT = "/tmp/mm_pal_dev0"
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def vpr_inst():
     vpr = VirtualPortRunner()
     yield vpr
