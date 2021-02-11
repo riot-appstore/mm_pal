@@ -298,6 +298,16 @@ class SerialDriver:
             self._write_preamble = value.encode()
         self._write_preamble = value
 
+    @property
+    def timeout(self):
+        """int: Read timeout."""
+        return self.dev.timeout
+
+    @timeout.setter
+    def timeout(self, val):
+        self.logger.debug("timeout(val=%r)", val)
+        self.dev.timeout = val
+
     @staticmethod
     def _encode_bytes(val):
         ret = val

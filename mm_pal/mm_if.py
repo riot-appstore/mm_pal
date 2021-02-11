@@ -529,7 +529,7 @@ class MmIf:
         last_size = self.mem_map[regs[-1]]['total_size']
         if last_size == '':
             last_size = self.mem_map[regs[-1]]['type_size']
-        size = self.mem_map[regs[-1]]['offset'] + last_size
+        size = self.mem_map[regs[-1]]['offset'] + last_size - offset
         return offset, size
 
     def _parse_read_struct(self, regs, rdata, data_has_name):

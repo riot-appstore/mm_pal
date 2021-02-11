@@ -29,8 +29,9 @@ def test_init_flush_on_startup(mock_lb, fos):
             _confirm_echo_readline(SerialDriver(port, flush_on_startup=fos))
 
 
-@pytest.mark.skipif(True,
-                    reason="No com port")
+@pytest.mark.skipif(list_ports.comports() == [] or
+                    list_ports.comports()[0][0] == '/dev/ttyS1',
+                    reason="No com port or fake com port (likey from CI)")
 def test_init_usb_only():
     SerialDriver()
     SerialDriver(use_port_that_contains="/dev")
@@ -114,12 +115,17 @@ def test_read(mock_lb, ser_dri):
     line = ser_dri.read(size=4, timeout=1)
     assert line == b"foo\n"
 
+    ser_dri.timeout = 1.2
+    assert ser_dri.timeout == 1.2
+    ser_dri.writeline("foo")
+    line = ser_dri.read(size=4, timeout=1)
+    assert line == b"foo\n"
+
     with pytest.raises(TimeoutError):
         ser_dri.read()
     ser_dri._reconnect_on_timeout = True
     with pytest.raises(TimeoutError):
         ser_dri.read()
-
 
 
 @pytest.mark.parametrize("test_string", ['test', 'another_test'])
