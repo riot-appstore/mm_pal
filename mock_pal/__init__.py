@@ -11,9 +11,9 @@ from .mock_if import MockIf
 from .mock_dev import VirtualPortRunner, MockDev
 from .mock_cli import MockCli
 
+
 __author__ = "Kevin Weiss"
 __email__ = "kevin.weiss@gmail.com"
-__version__ = "1.1.2"
 
 __all__ = ['MockIf',
            'VirtualPortRunner',

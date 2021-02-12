@@ -49,14 +49,16 @@ class MockCli(MmCmd):
         if 'dev_driver' in kwargs:
             super().__init__(kwargs['dev_driver'], **cmd_kwargs)
             return
-        port = kwargs.get('port', None)
+        if 'driver' in kwargs:
+            super().__init__(MockIf(driver=kwargs['driver']), **cmd_kwargs)
+            return
 
-        if port is None:
+        if "port" not in kwargs:
             super().__init__(serial_connect_wizard(MockIf, **kwargs),
                              **cmd_kwargs)
         else:
             super().__init__(MockIf(**kwargs), **cmd_kwargs)
-        self.logger.debug("__init__(%r)", kwargs)
+        self.logger.debug("__init__(%r, %r)", kwargs, cmd_kwargs)
 
     def do_special_cmd(self, arg):
         """Do nothing but show how to use special commands.
