@@ -11,7 +11,7 @@ This package consists of base classes to build interfaces and a mock
 device used for testing and as an example of implementation.
 
 Device connection such as `serial` and parsers such as `json` are used to get
-standard output
+standard output.
 
 ## Concept
 
@@ -76,6 +76,9 @@ _Note: setuptools package should be installed._
 
 This package is meant to be built upon. An example implementation is done with
 the [mock_if](mock_pal/mock_if.py) and the [mock_cli](mock_pal/mock_cli.py).
+
+The mm_cmd is based on the [cmd2](https://github.com/python-cmd2/cmd2) module
+is probably worth reading the [documenation](https://cmd2.readthedocs.io/en/latest/).
 
 ## Useful commands
 
