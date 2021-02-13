@@ -121,15 +121,6 @@ class MmCmd(Cmd):
                                   retry=opts.retry)
         self.poutput("Success")
 
-    read_struct_parser = argparse.ArgumentParser()
-    read_struct_parser.add_argument('struct',
-                                    choices_method=regs_choices_method,
-                                    help="Name of the struct to read")
-    read_struct_parser.add_argument('--data-without-names', '-d',
-                                    action="store_false",
-                                    help="Show only the data without reg name")
-    add_timeout_retry_arguments(read_struct_parser)
-
     commit_write_parser = argparse.ArgumentParser()
     commit_write_parser.add_argument('reg', choices_method=regs_choices_method,
                                      help="name of the register to read")
@@ -155,18 +146,22 @@ class MmCmd(Cmd):
     read_struct_parser.add_argument('struct',
                                     choices_method=regs_choices_method,
                                     help="Name of the struct to read")
-    read_struct_parser.add_argument('--data-without-names', '-d',
+    read_struct_parser.add_argument('--data_only', '-d',
                                     action="store_false",
                                     help="Show only the data without reg name")
+    read_struct_parser.add_argument('--compact', '-c',
+                                    action="store_false",
+                                    help="Output is compact")
     add_timeout_retry_arguments(read_struct_parser)
 
     @with_argparser(read_struct_parser)
     def do_read_struct(self, opts):
         """Read a set of registers defined by the memory map."""
         resp = self.dev_driver.read_struct(opts.struct,
+                                           data_has_name=opts.data_only,
                                            timeout=opts.timeout,
                                            retry=opts.retry)
-        self.poutput(pformat(resp, compact=True))
+        self.poutput(pformat(resp, compact=opts.compact))
 
     commit_parser = argparse.ArgumentParser()
     add_timeout_retry_arguments(commit_parser)
@@ -226,10 +221,9 @@ class MmCmd(Cmd):
             }
         """
         if opts.reg:
-            self.poutput(pformat(self.dev_driver.mem_map[opts.reg],
-                                 sort_dicts=True))
+            self.poutput(pformat(self.dev_driver.mem_map[opts.reg]))
         else:
-            self.poutput(pformat(self.dev_driver.mem_map, sort_dicts=True))
+            self.poutput(pformat(self.dev_driver.mem_map))
 
     info_param_parser = argparse.ArgumentParser()
     info_param_parser.add_argument('param',
@@ -243,7 +237,7 @@ class MmCmd(Cmd):
         for key, val in self.dev_driver.mem_map.items():
             if opts.param in val:
                 record_types[key] = val[opts.param]
-        self.poutput(pformat(record_types, sort_dicts=True))
+        self.poutput(pformat(record_types))
 
     # pylint: disable=unused-argument
     def _onchange_loglevel(self, param_name, old, new):

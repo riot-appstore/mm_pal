@@ -14,7 +14,7 @@ from mock_pal import MockDev, VirtualPortRunner
 from mm_pal.serial_driver import SerialDriver
 from mm_pal import MmIf
 
-SLEEP_TIME = 0.1
+SLEEP_TIME = 0.2
 
 MM_PATH = str(Path(__file__).parents[0]) + \
           "/../mock_pal/mem_map/example_map_t_0_0_1.csv"

@@ -83,9 +83,11 @@ def test_readline(mock_lb, ser_dri):
     ser_dri.writeline("foo")
     assert ser_dri.readline(timeout=1) == "foo\n"
 
-    ser_dri.writeline("foo")
     with pytest.raises(TimeoutError):
-        ser_dri.readline(timeout=0)
+        # Try it a few times in case the response is fast enough...
+        for _ in range(5):
+            ser_dri.writeline("foo")
+            ser_dri.readline(timeout=0)
 
 
 def test_readline_to_delim(mock_lb, ser_dri):
