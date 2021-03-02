@@ -96,7 +96,7 @@ def test_read_struct_regression_name(mock_app_json, mm_if_inst, regtest,
         regtest.write(str(resp) + "\n")
 
 
-@pytest.mark.parametrize("reg", ["ui", "arru8", "ui32", "bf8_extra"])
+@pytest.mark.parametrize("reg", [".", "ui", "arru8", "ui32", "bf8_extra"])
 def test_read_struct_regression(mock_app_json, mm_if_inst, regtest, reg):
     resps = mm_if_inst.read_struct(reg)
     for resp in resps:

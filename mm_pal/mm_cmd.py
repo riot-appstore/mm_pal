@@ -143,14 +143,15 @@ class MmCmd(Cmd):
         self.poutput("Success")
 
     read_struct_parser = argparse.ArgumentParser()
-    read_struct_parser.add_argument('struct',
+    read_struct_parser.add_argument('struct', default='.', nargs='?',
                                     choices_method=regs_choices_method,
-                                    help="Name of the struct to read")
+                                    help="Name of the struct to read"
+                                    ", use \".\" for all")
     read_struct_parser.add_argument('--data_only', '-d',
                                     action="store_false",
                                     help="Show only the data without reg name")
     read_struct_parser.add_argument('--compact', '-c',
-                                    action="store_false",
+                                    action="store_true",
                                     help="Output is compact")
     add_timeout_retry_arguments(read_struct_parser)
 

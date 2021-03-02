@@ -592,14 +592,17 @@ class MmIf:
         started = False
         regs = []
         # We want to collect all names starting with the cmd_start
-        for name in self.mem_map.keys():
-            if name.startswith(struct):
-                regs.append(name)
-                started = True
-            elif started is True:
-                # If there is a break in the list we should exit out
-                # otherwise the data will not be grouped.
-                break
+        if struct == '.':
+            regs = list(self.mem_map.keys())
+        else:
+            for name in self.mem_map.keys():
+                if name.startswith(struct):
+                    regs.append(name)
+                    started = True
+                elif started is True:
+                    # If there is a break in the list we should exit out
+                    # otherwise the data will not be grouped.
+                    break
         offset, size = self._get_off_size_regs(regs)
         data = self._read_bytes_with_parser(offset, size, retry, timeout)
         data = self._parse_read_struct(regs, data, data_has_name)
