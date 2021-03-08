@@ -101,15 +101,17 @@ def test_readline_to_delim(mock_lb, ser_dri):
 
     ser_dri.writeline("foo")
     ser_dri.writeline("bar")
-    ser_dri.writeline("DELIM")
-    sleep(0.3)
-    lines = ser_dri.readlines_to_delim(delim="DELIM")
-    assert lines == "foo\nbar\n"
-
-    ser_dri.writeline("foo")
-    ser_dri.writeline("bar")
     with pytest.raises(TimeoutError):
         ser_dri.readlines_to_delim()
+
+
+def test_readline_to_diff_delim(mock_lb, ser_dri):
+    ser_dri.writeline("foo")
+    ser_dri.writeline("bar")
+    ser_dri.writeline("$$$")
+    lines = ser_dri.readlines_to_delim(delim="$$$")
+    sleep(0.3)
+    assert lines == "foo\nbar\n"
 
 
 def test_read(mock_lb, ser_dri):
