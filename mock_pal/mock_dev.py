@@ -60,6 +60,7 @@ class VirtualPortRunner:
                          mock_port, ext_port)
         commands = ['socat', f'pty,link={ext_port},raw,echo=0',
                     f'pty,link={mock_port},raw,echo=0']
+        # pylint: disable=consider-using-with
         self._socat_p = subprocess.Popen(commands)
         self.ext_port = ext_port
         self.mock_port = mock_port
