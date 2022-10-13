@@ -325,7 +325,7 @@ class MockDev:
         if func is None:
             func = self.run_loopback_line
         self._run_thread = Thread(target=func, args=args)
-        self._run_thread.setDaemon(True)
+        self._run_thread.daemon = True
         self.logger.debug("start_loopback_line_thread_loop")
         self._run_thread.start()
 

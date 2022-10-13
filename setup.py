@@ -40,7 +40,7 @@ setup(
     url="https://github.com/riot-appstore",
     packages=find_packages(),
     platforms='any',
-    python_requires='>=3.6.*',
+    python_requires='>=3.7.*',
     include_package_data=True,
     classifiers=[
         "License :: OSI Approved :: MIT License",
@@ -48,15 +48,15 @@ setup(
         "Development Status :: 3 - Alpha",
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         "Intended Audience :: Developers"
     ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest", "pytest-cov", "pytest-regtest"],
-    install_requires=['pyserial', 'cmd2>=1.3,<2'],
+    install_requires=['pyserial', 'cmd2>=2'],
     entry_points={
         'console_scripts': ['start_mock_dev=mock_pal.mock_dev:main',
                             'mm_pal_mock_cli=mock_pal.mock_cli:main']

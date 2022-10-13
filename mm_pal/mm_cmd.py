@@ -67,10 +67,11 @@ class MmCmd(Cmd):
                                                    ".mm_history"))
         super().__init__(allow_cli_args=False, *args, **kwargs)
         self.loglevel = logging.getLevelName(logging.root.level)
-        self.add_settable(Settable('loglevel', str, 'Logging Level',
-                                   choices=['NOTSET', 'DEBUG', 'INFO',
-                                            'WARNING', 'ERROR', 'CRITICAL'],
-                                   onchange_cb=self._onchange_loglevel))
+        settable = Settable('loglevel', str, 'Logging Level', self,
+                            choices=['NOTSET', 'DEBUG', 'INFO',
+                                     'WARNING', 'ERROR', 'CRITICAL'],
+                            onchange_cb=self._onchange_loglevel)
+        self.add_settable(settable)
 
     def regs_choices_method(self) -> List[str]:
         """Return a list of valid register names."""
@@ -82,7 +83,7 @@ class MmCmd(Cmd):
         return list(self.dev_driver.mem_map[first_reg].keys())
 
     read_reg_parser = argparse.ArgumentParser()
-    read_reg_parser.add_argument('reg', choices_method=regs_choices_method,
+    read_reg_parser.add_argument('reg', choices_provider=regs_choices_method,
                                  help="name of the register to read")
     read_reg_parser.add_argument('--offset', '-o', type=int, default=0,
                                  help="offset of the array")
@@ -101,7 +102,7 @@ class MmCmd(Cmd):
         self.poutput(resp)
 
     write_reg_parser = argparse.ArgumentParser()
-    write_reg_parser.add_argument('reg', choices_method=regs_choices_method,
+    write_reg_parser.add_argument('reg', choices_provider=regs_choices_method,
                                   help="name of the register to read")
     write_reg_parser.add_argument('data', nargs="+",
                                   help="Data to write")
@@ -122,7 +123,8 @@ class MmCmd(Cmd):
         self.poutput("Success")
 
     commit_write_parser = argparse.ArgumentParser()
-    commit_write_parser.add_argument('reg', choices_method=regs_choices_method,
+    commit_write_parser.add_argument('reg',
+                                     choices_provider=regs_choices_method,
                                      help="name of the register to read")
     commit_write_parser.add_argument('data', nargs="+",
                                      help="Data to write")
@@ -144,7 +146,7 @@ class MmCmd(Cmd):
 
     read_struct_parser = argparse.ArgumentParser()
     read_struct_parser.add_argument('struct', default='.', nargs='?',
-                                    choices_method=regs_choices_method,
+                                    choices_provider=regs_choices_method,
                                     help="Name of the struct to read"
                                     ", use \".\" for all")
     read_struct_parser.add_argument('--data_only', '-d',
@@ -195,7 +197,7 @@ class MmCmd(Cmd):
         self.poutput(f'Interface version: {version}')
 
     info_reg_parser = argparse.ArgumentParser()
-    info_reg_parser.add_argument('reg', choices_method=regs_choices_method,
+    info_reg_parser.add_argument('reg', choices_provider=regs_choices_method,
                                  nargs=(0, 1),
                                  help="name of the register to read")
 
@@ -228,7 +230,7 @@ class MmCmd(Cmd):
 
     info_param_parser = argparse.ArgumentParser()
     info_param_parser.add_argument('param',
-                                   choices_method=param_choices_method,
+                                   choices_provider=param_choices_method,
                                    help="name of the register to read")
 
     @with_argparser(info_param_parser)

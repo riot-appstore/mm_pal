@@ -5,6 +5,7 @@
 """
 from time import sleep
 import pytest
+from serial import SerialException
 from serial.tools import list_ports
 from mm_pal.serial_driver import SerialDriver
 from conftest import EXT_PORT
@@ -46,7 +47,7 @@ def test_init_kwargs(mock_lb):
     _confirm_echo_readline(SerialDriver(port=EXT_PORT,
                                         rts=True,
                                         dtr=True))
-    with pytest.raises(TypeError):
+    with pytest.raises(SerialException):
         # Since serial exception is caught
         ser_dri = SerialDriver(port="foo")
 
@@ -183,3 +184,19 @@ def test_loopback(mock_lb_bytes, ser_dri, w_bytes, preamble,
     expected_size += len(w_bytes)
     assert w_bytes in read_bytes
     assert len(read_bytes) == expected_size
+
+
+def test_port_sharing(mock_lb):
+    driver_a = SerialDriver(port=EXT_PORT)
+    driver_b = SerialDriver(port=EXT_PORT)
+    driver_a.writeline('foo')
+    line = driver_b.read(size=4, timeout=1)
+    assert line == b"foo\n"
+
+
+def test_reopening(mock_lb):
+    driver = SerialDriver(port=EXT_PORT)
+    driver = SerialDriver(port=EXT_PORT)
+    driver = None
+    driver = SerialDriver(port=EXT_PORT)
+    assert driver

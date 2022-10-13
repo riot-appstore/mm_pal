@@ -53,7 +53,7 @@ def import_mm_from_csv(path):
         obj: memory map from the csv.
     """
     mem_map = {}
-    with open(path) as csvfile:
+    with open(path, encoding='utf-8') as csvfile:
         rows = list(csv.reader(csvfile, quotechar="'"))
         for row in range(1, len(rows)):
             _try_parse_int_list(rows[row])
