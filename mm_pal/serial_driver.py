@@ -96,8 +96,10 @@ class SerialDriver:
             self.dev.flushInput()
             self.dev.flushOutput()
 
+    # flake8: noqa: C901
     def _connect(self, *args, **kwargs):
         # pylint: disable=too-many-branches
+
         search_com = kwargs.pop('use_port_that_contains', None)
         kwargs['timeout'] = kwargs.pop('timeout', 0.5)
         if len(args) < 2:
