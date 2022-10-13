@@ -10,11 +10,16 @@ more usable defaults for connecting to mm_pal based devices.
 """
 import logging
 import time
-from serial import Serial, serial_for_url, SerialException
+from typing import Dict
+from serial import Serial
 from serial.tools import list_ports
+
 
 __author__ = "Kevin Weiss"
 __email__ = "weiss.kevin604@gmail.com"
+
+
+_serialports: Dict[str, Serial] = {}  # Key: port name, value: port instance
 
 
 class SerialDriver:
@@ -92,11 +97,15 @@ class SerialDriver:
             self.dev.flushOutput()
 
     def _connect(self, *args, **kwargs):
+        # pylint: disable=too-many-branches
         search_com = kwargs.pop('use_port_that_contains', None)
         kwargs['timeout'] = kwargs.pop('timeout', 0.5)
         if len(args) < 2:
             kwargs['baudrate'] = kwargs.pop('baudrate', 115200)
         if len(args) == 0 and 'port' not in kwargs:
+            # get the last listed port
+            kwargs['port'] = sorted(list_ports.comports(),
+                                    key=lambda x: x[0])[-1][0]
             if search_com:
                 # Gets the port that contains search string if not specified.
                 # eg. If connecting to an nucleo board search for
@@ -104,48 +113,53 @@ class SerialDriver:
                 # eg. If you know the location of the board for the hub then
                 # search for "LOCATION=1-1:1.2"
                 kwargs['port'] = next(list_ports.grep(search_com))[0]
-            else:
-                # Get the last port in the list of ports sorted by name if
-                # not specified.
-                # eg. COM1, COM2, COM3 -> COM3
-                # eg. /dev/ttyACM0, /dev/ttyUSB0, /dev/ttyUSB1 -> /dev/ttyUSB1
-                kwargs['port'] = sorted(list_ports.comports(),
-                                        key=lambda x: x[0])[-1][0]
-        try:
-            # In order to set rts and dtr before opening port
-            # port must == None
-            args = list(args)
-            if len(args) == 0:
-                port = kwargs.pop('port')
-                kwargs['port'] = None
-            else:
-                port = args[0]
-                args[0] = None  # pylint: disable=E1137
 
-            rts = kwargs.pop('rts', None)
-            dtr = kwargs.pop('dtr', None)
+        # In order to set rts and dtr before opening port
+        # port must == None
+        args = list(args)
+        if len(args) == 0:
+            port = kwargs.pop('port')
+            kwargs['port'] = None
+        else:
+            port = args[0]
+            args[0] = None  # pylint: disable=E1137
 
-            self.logger.debug("Serial(%r,%r)", args, kwargs)
+        rts = kwargs.pop('rts', None)
+        dtr = kwargs.pop('dtr', None)
+
+        self.logger.debug("Serial(%r,%r)", args, kwargs)
+
+        if _serialports.get(port):
+            self.logger.debug("Serial port %r already exists", port)
+            self.dev = _serialports[port]
+        else:
             self.dev = Serial(*args, **kwargs)
+            _serialports[port] = self.dev
 
+        try:
             if rts is not None:
                 self.dev.rts = rts
                 kwargs['rts'] = rts
             if dtr is not None:
                 self.dev.dtr = dtr
                 kwargs['dtr'] = dtr
+        except IOError as exc:
+            # We want to ignore
+            # OSError: [Errno 25] Inappropriate ioctl for device
+            # as this is an extra feature
+            self.logger.warning(exc)
 
-            if len(args) == 0:
-                self.dev.port = port
-                kwargs['port'] = port
-            else:
-                self.dev.port = port
-                args[0] = port  # pylint: disable=E1137
+        if len(args) == 0:
+            self.dev.port = port
+            kwargs['port'] = port
+        else:
+            self.dev.port = port
+            args[0] = port  # pylint: disable=E1137
 
-            self.logger.debug("opening port=%r", port)
+        self.logger.debug("opening port=%r", port)
+        if (self.dev.port is None) or (not self.dev.is_open):
             self.dev.open()
-        except SerialException:
-            self.dev = serial_for_url(*args, **kwargs)
+
         self._args = args
         self._kwargs = kwargs
 
