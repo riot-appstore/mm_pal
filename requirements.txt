@@ -1,2 +1,2 @@
-# Use the current setup.py for requirements
-.
+cmd2==2.4.2
+pyserial==3.5
