@@ -38,18 +38,17 @@ jobs:
         pyenv="py$(echo "${{ matrix.python-version }}" | tr -d '.')"
         tox -e ${pyenv},test,flake8,lint,doctest
     - name: Upload to coverage
-      uses: codecov/codecov-action@v1.2.1
+      uses: codecov/codecov-action@v3
       with:
-        files: coverage.xml
+        files: ./coverage.xml
         flags: ${{ matrix.python-version }},${{ matrix.tox-testenv }}
     - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
       if: >-
         matrix.python-version == 3.9 &&
         github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags')
       with:
-        user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
         packages_dir: .tox/dist/
 

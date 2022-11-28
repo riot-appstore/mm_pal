@@ -461,7 +461,7 @@ class MmIf:
                           "r_data=%r)", reg_info, r_data)
         data = self._parse_array(r_data, reg_info['type_size'],
                                  reg_info['type'])
-        if reg_info['total_size'] == '':
+        if reg_info['array_size'] == '':
             return data[0]
         return data
 
