@@ -13,7 +13,7 @@ from .misc import serial_connect_wizard
 
 __author__ = "Kevin Weiss"
 __email__ = "kevin.weiss@gmail.com"
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 __all__ = ['MmIf',
            'MmCmd',

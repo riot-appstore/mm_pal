@@ -11,7 +11,7 @@ more usable defaults for connecting to mm_pal based devices.
 import logging
 import time
 from typing import Dict
-from serial import Serial, PARITY_NONE
+from serial import Serial, PARITY_NONE, SerialException
 from serial.tools import list_ports
 
 
@@ -133,15 +133,20 @@ class SerialDriver:
 
         if _serialports.get(port):
             self.logger.debug("Serial port %r already exists", port)
-            self.dev = _serialports[port]
-            if 'parity' in kwargs:
-                self.dev.parity = kwargs['parity']
-            else:
-                self.dev.parity = PARITY_NONE
-            if 'timeout' in kwargs:
-                self.dev.timeout = kwargs['timeout']
-            if 'baudrate' in kwargs:
-                self.dev.baudrate = kwargs['baudrate']
+            try:
+                self.dev = _serialports[port]
+                if 'parity' in kwargs:
+                    self.dev.parity = kwargs['parity']
+                else:
+                    self.dev.parity = PARITY_NONE
+                if 'timeout' in kwargs:
+                    self.dev.timeout = kwargs['timeout']
+                if 'baudrate' in kwargs:
+                    self.dev.baudrate = kwargs['baudrate']
+            except SerialException:
+                del _serialports[port]
+                self.dev = Serial(*args, **kwargs)
+                _serialports[port] = self.dev
         else:
             self.dev = Serial(*args, **kwargs)
             _serialports[port] = self.dev
