@@ -40,7 +40,7 @@ setup(
     url="https://github.com/riot-appstore",
     packages=find_packages(),
     platforms='any',
-    python_requires='>=3.7.*',
+    python_requires='>=3.7',
     include_package_data=True,
     classifiers=[
         "License :: OSI Approved :: MIT License",
